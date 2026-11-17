@@ -77,3 +77,14 @@ src/sim/build/
 src/kg_*.stamp
 src/build_*.log
 src/measure/*.log
+src/measure/xstm/
+src/measure/_xmsgs/
+src/measure/zxuno_measure.*
+!src/measure/zxuno_measure.prj
+!src/measure/zxuno_measure.xst
+src/measure/xsth/
+src/measure/zxuno_h.v
+src/measure/zxuno_measure_h.*
+!src/measure/zxuno_measure_h.xst
+src/measure/*.log
+src/measure/*.nlf

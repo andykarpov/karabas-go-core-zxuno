@@ -27,6 +27,29 @@
 
 **Это ворота:** по цифрам решаем, влезают ли GS и OPL4 на каждую плату и что выключать, если нет (SAA, PZX, DMA, Radastan…).
 
+### Результат Ф0 (2026-11-18)
+
+Импорт: `exp28/rtl` zxtres/zxspectrum c525f16 → `src/rtl/zxuno/` (список файлов — из Vivado-проекта upstream; лишний `io/spi.v` удалён). В `config.vh` выключены MULTIBOOT, JOYSPLITTER, AD724, генерация цветовой поднесущей, пасхалка (`// karabas:`). В `new_memory.v` убран цикл обнуления VRAM (XST: «Loop count limit exceeded»). Замер: `src/measure/` (`make`, `make report`; иерархия — `zxuno_measure_h.xst` + `netgen` + `tools/lutcount.py`), около 3 мин.
+
+| Сборка | LUT | FF | RAMB16 | DSP48 | XST, нс |
+|---|---|---|---|---|---|
+| `zxuno` EXP28, всё остальное включено (SAA, PZX, DMA, RTC, UART, Radastan, ULAplus, Timex, Turbosound, Specdrum) | **7 214 (47 %)** | 3 220 | 19 | 4 | 36,5 |
+
+Разбивка (`keep_hierarchy Yes`, 6 689 LUT): T80 + DMA 1905 (T80 1659, DMA 217), SAA1099 759, Turbosound 744 (2×AY 365), PS/2-клавиатура 723, PZX-плеер 652, ULA 491 (синхро 181), микшер 283, память 208, PS/2-мышь 191, UART 176. RAMB16: VRAM 32K (две копии страниц 5 / 7) = 16, остальное — загрузочное ПЗУ и раскладки.
+
+Оценка с добавками (LUT, Mini G):
+
+| Блок | LUT | Откуда |
+|---|---|---|
+| ZX-Uno EXP28 | 7 200 | замер выше |
+| Обвязка платы (`kg_mcu2`, OSD, HDMI, удвоитель) | ~2 700 | specialist Ф1: 23 % всего при ядре 870 |
+| Матрица + peaks | ~200 | `dot_matrix.v` |
+| GS | ~2 000 | T80 ~1 700 + порты / микшер (оценка) |
+| OPL4 | ~4 700 | карта tsconf Go (см. заметку opl4-sources) |
+| **Итого** | **~16 800 из 15 032** | не влезает на ~1 800 + запас под упаковку |
+
+Что можно вынуть: PS/2-клавиатура и мышь (723 + 191) заменяются нашими HID-путями (несколько сотен LUT вместо них), SAA 759, PZX 652, DMA 217. Без OPL4 (только GS) — ~12 100 (80 %), влезает. Худший путь XST 36,5 нс при такте 28 МГц (35,7 нс): процессор и ULA работают по clock enable, проверить в Ф1 по PAR.
+
 ## Ф1. ZX-Uno на Mini G
 
 - Топ и тактирование из tsconf (28 МГц + HDMI + MIDI 12 МГц), `kg_mcu2` / link v2, `FT_CLK_OUT` ведётся всегда, `FLASH_CS_N` = 1.
