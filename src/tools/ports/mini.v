@@ -1,0 +1,99 @@
+// the ports of karabas_mini_top (from core-tsconf), for tools/mktop.py
+module karabas_mini_top (
+	//------------------ global clock --------
+	input wire 				CLK_50MHZ,
+
+	//------------------ esp8266 uart --------
+	inout wire 				UART_RX,
+	inout wire 				UART_TX,
+	inout wire 				UART_CTS,
+	inout wire 				ESP_RESET_N,
+	inout wire 				ESP_BOOT_N,
+
+	//------------------ sram ----------------
+	output wire [20:0] 	MA,
+	inout wire [15:0] 	MD,
+	output wire [1:0] 	MWR_N,
+	output wire [1:0] 	MRD_N,
+
+	//------------------ sdram ---------------
+	output wire [1:0] 	SDR_BA,
+	output wire [12:0] 	SDR_A,
+	output wire 			SDR_CLK,
+	output wire [1:0] 	SDR_DQM,
+	output wire 			SDR_WE_N,
+	output wire 			SDR_CAS_N,
+	output wire 			SDR_RAS_N,
+	inout wire [15:0] 	SDR_DQ,
+
+	//------------------ sd2 -----------------
+	output wire 			SD_CS_N,
+	output wire 			SD_CLK,
+	inout wire 				SD_DI,
+	inout wire 				SD_DO,
+	input wire 				SD_DET_N,
+
+	//------------------ ft812 rgb + sync ----
+	input wire [7:0] 		VGA_R,
+	input wire [7:0] 		VGA_G,
+	input wire [7:0] 		VGA_B,
+	input wire 				VGA_HS,
+	input wire 				VGA_VS,
+
+	//------------------ dvi / hdmi ----------
+	output wire [3:0] 	TMDS_P,
+	output wire [3:0] 	TMDS_N,
+
+	//------------------ ft812 spi and ctl ---
+	output wire 			FT_SPI_CS_N,
+	output wire 			FT_SPI_SCK,
+	input wire 				FT_SPI_MISO,
+	output wire 			FT_SPI_MOSI,
+	input wire 				FT_INT_N,
+	input wire 				FT_CLK,
+	input wire 				FT_AUDIO,
+	input wire 				FT_DE,
+	input wire 				FT_DISP,
+	output wire 			FT_RESET,
+	output wire 			FT_CLK_OUT,
+
+	//------------------ cf card -------------
+	output wire [2:0] 	WA,
+	output wire [1:0] 	WCS_N,
+	output wire 			WRD_N,
+	output wire 			WWR_N,
+	output wire 			WRESET_N,
+	inout wire [15:0] 	WD,
+
+	//------------------ analog in/out -------	
+	output wire 			TAPE_OUT,
+	input wire 				TAPE_IN,
+	output wire 			AUDIO_L,
+	output wire 			AUDIO_R,
+
+	//------------------ adc -----------------
+	output wire 			ADC_CLK,
+	inout wire 				ADC_BCK,
+	inout wire 				ADC_LRCK,
+	input wire 				ADC_DOUT,
+
+	//------------------ mcu spi -------------
+	input wire 				MCU_CS_N,
+	input wire 				MCU_SCK,
+	input wire 				MCU_MOSI,
+	output wire 			MCU_MISO,
+	inout wire [3:0] 		MCU_IO,  // [1] INT of link v2, [2] sd2 cs_n, [3] ft cs_n
+
+	//------------------ midi ----------------
+	output wire 			MIDI_TX,
+	output wire 			MIDI_CLK,
+	output wire 			MIDI_RESET_N,
+
+	//------------------ optional flash ------
+	output wire 			FLASH_CS_N,
+	input wire  			FLASH_DO,
+	output wire 			FLASH_DI,
+	output wire 			FLASH_SCK,
+	output wire 			FLASH_WP_N,
+	output wire 			FLASH_HOLD_N
+);

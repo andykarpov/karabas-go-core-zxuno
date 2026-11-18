@@ -15,7 +15,7 @@
 
 ISE_SETTINGS ?= /opt/Xilinx/14.7/ISE_DS/settings64.sh
 PART = xc6slx25-ftg256-2
-BOARDS = minig
+BOARDS = go mini minig
 
 SHELL = /bin/bash
 .SHELLFLAGS = -e -o pipefail -c
@@ -30,6 +30,8 @@ JSON = core.json
 # map / par options (as the .xise projects had them, the same for the three boards but the cost table)
 # The cost table (map -t, the placement seed) of the Mini is 2: with 1 the placement of the build of 2026-10-19
 # put a shift register of the 5x clock of zhdmi far from its OSERDES (-0.21 ns); 2, 3, 4 met all constraints.
+MAP_T_go = 2
+MAP_T_mini = 2
 MAP_T_minig = 2
 MAP_OPT = -logic_opt off -ol high -xe n -xt 0 -register_duplication off -r 4 -global_opt off -mt 2 -detail -ir off -pr b -lc off -power off
 PAR_OPT = -ol high -xe n -mt 4
