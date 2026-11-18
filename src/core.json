@@ -18,12 +18,16 @@
         {
             "filename": "roms/esxdos089.bin",
             "address": 196608
+        },
+        {
+            "filename": "roms/gs105b.rom",
+            "address": 2147483648
         }
     ],
     "boards": {
         "minig": {
             "link": 2,
-            "build": "26111811",
+            "build": "26111815",
             "bitstream": "karabas_minig.bin"
         }
     },
@@ -211,6 +215,17 @@
             "type": "S",
             "name": "Specdrum",
             "index": 14,
+            "options": [
+                "On",
+                "Off"
+            ],
+            "default": 0,
+            "page": 2
+        },
+        {
+            "type": "S",
+            "name": "GS",
+            "index": 20,
             "options": [
                 "On",
                 "Off"

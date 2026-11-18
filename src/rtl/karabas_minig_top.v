@@ -123,14 +123,6 @@ assign FLASH_SCK    = 1'b0;
 assign FLASH_WP_N   = 1'b1;
 assign FLASH_HOLD_N = 1'b1;
 
-assign SDR_BA = 2'b11;
-assign SDR_A = 13'h1FFF;
-assign SDR_CLK = 1'b0;
-assign SDR_DQM = 2'b11;
-assign SDR_WE_N = 1'b1;
-assign SDR_CAS_N = 1'b1;
-assign SDR_RAS_N = 1'b1;
-assign SDR_DQ = 16'hZZZZ;
 
 assign WA = 3'b000;
 assign WCS_N = 2'b11;
@@ -237,7 +229,7 @@ wire [31:0] ld_addr;
 wire [7:0] ld_data;
 wire ld_ready;
 
-localparam SW_N = 20;
+localparam SW_N = 22;   // 20 GS, 21 OPL3
 wire [SW_N*8-1:0] softsw;
 wire sw_wr;
 // RTC of the board (core.json rtc_mode 1: the DS1307 layout, BCD), shared by the DS1307 on I2C and the Gluk ports
@@ -406,6 +398,7 @@ wire [2:0] sw_joy_l = softsw[16*8 +: 3];     // Kempston / Sinclair1 / Sinclair2
 wire [2:0] sw_joy_r = softsw[17*8 +: 3];
 wire sw_mouse_off = softsw[18*8];
 wire sw_divmmc_off = softsw[19*8];          // DivMMC On / Off (esxDOS starts 48K BASIC; Off: the 128K menu after a reset)
+wire sw_gs_off = softsw[20*8];               // General Sound On / Off
 // option number -> JOYCONF code of ZX-Uno (0 off, 1 Kempston, 2 Sinclair P1, 3 Sinclair P2, 4 cursor, 5 Fuller)
 function [2:0] joy_code(input [2:0] opt);
 	joy_code = (opt >= 3'd5) ? 3'd0 : opt + 3'd1;
@@ -476,7 +469,12 @@ kg_cursor #(.Z_W(4), .Z_NEG(1), .Z_ACC(1)) cursor(
 // ---------- ZX-Uno ----------
 wire [2:0] zx_r, zx_g, zx_b;
 wire zx_hsync, zx_vsync, zx_blank, clk14en;
-wire [15:0] audio_l, audio_r;
+wire [20:0] zx_sram_a;
+wire [15:0] zx_audio_l, zx_audio_r;   // the mixer of ZX-Uno (offset in silence)
+wire signed [15:0] audio_l, audio_r;   // zxuno_mix: + GS + OPL3, DC removed, saturated
+wire gs_oe;
+wire [7:0] gs_do;
+wire cpu_mreq_n, cpu_iorq_n, cpu_rd_n, cpu_wr_n, cpu_m1_n;
 wire [15:0] cpu_a;
 wire [7:0] cpu_do;
 wire cpu_iowr;
@@ -530,12 +528,19 @@ zxuno #(.MASTERCLK(28000000), .FPGA_MODEL(3'b000)) zxuno (
 	.ps2_wr				(mcu_ps2_wr),
 	.ear_ext				(tape_in_r),
 	.tape_out			(TAPE_OUT),
-	.audio_left			(audio_l),
-	.audio_right		(audio_r),
+	.audio_left			(zx_audio_l),
+	.audio_right		(zx_audio_r),
 	.midi_out			(MIDI_TX),
 	.cpu_a				(cpu_a),
 	.cpu_do				(cpu_do),
 	.cpu_iowr			(cpu_iowr),
+	.cpu_mreq_n		(cpu_mreq_n),
+	.cpu_iorq_n		(cpu_iorq_n),
+	.cpu_rd_n			(cpu_rd_n),
+	.cpu_wr_n			(cpu_wr_n),
+	.cpu_m1_n			(cpu_m1_n),
+	.ext_oe			(gs_oe),
+	.ext_dout			(gs_do),
 	.ext_audio_l		(adc_mix_l),
 	.ext_audio_r		(adc_mix_r),
 	.i2c_scl				(i2c_scl),
@@ -606,7 +611,7 @@ reg [1:0] ld_st = 2'd0;
 reg ld_we_n = 1'b1;
 always @(posedge clk_bus) begin
 	case (ld_st)
-		2'd0: if (ld_wr && ld_rom_act) begin ld_a <= ld_addr[20:0]; ld_d <= ld_data; ld_st <= 2'd1; end
+		2'd0: if (ld_wr && ld_rom_act && !ld_addr[31]) begin ld_a <= ld_addr[20:0]; ld_d <= ld_data; ld_st <= 2'd1; end
 		2'd1: begin ld_we_n <= 1'b0; ld_st <= 2'd2; end
 		2'd2: begin ld_st <= 2'd3; end
 		2'd3: begin ld_we_n <= 1'b1; ld_st <= 2'd0; end
@@ -614,7 +619,6 @@ always @(posedge clk_bus) begin
 end
 assign ld_ready = (ld_st == 2'd0);
 
-wire [20:0] zx_sram_a;
 assign MA = ld_rom_act ? ld_a : zx_sram_a;
 assign MD[7:0] = ld_rom_act ? ld_d : 8'hZZ;   // ZX-Uno does not drive the bus in reset
 assign MD[15:8] = 8'hZZ;
@@ -747,6 +751,83 @@ zxuno_matrix matrix(
 	.iod				(cpu_do),
 	.cmd_wr			(matrix_cmd_wr),
 	.cmd				(matrix_cmd)
+);
+
+// ---------- General Sound (gs_top of core-tsconf: z80-silicon at 14 MHz, its memory in the SDRAM) ----------
+// Ports BB / B3. The ROM (gs105b.rom) comes from core.json at 80000000 through the loader of the firmware, as
+// in core-tsconf (gs_top writes it into the SDRAM); the SRAM of ZX-Uno takes the addresses below.
+// OSD General Sound Off: the GS does not see the CPU (its ports read as the ULA) and its sound is muted.
+reg ce_14m = 1'b0;
+always @(negedge clk_bus) ce_14m <= ~ce_14m;
+reg [1:0] gs_rst_s = 2'b11;
+always @(posedge clk_bus) gs_rst_s <= { gs_rst_s[0], ~locked | ld_rom_act | sw_hard_reset | sw_gs_off };
+wire signed [14:0] gs_out_l, gs_out_r;
+wire gs_sample_t, gs_oe_i;
+gs_top gs_top(
+	.clk_sys			(clk_sys),
+	.clk_bus			(clk_bus),
+	.ce				(ce_14m),
+	.reset			(gs_rst_s[1]),
+	.areset			(~locked),
+	.a					(cpu_a),
+	.di				(cpu_do),
+	.mreq_n			(cpu_mreq_n),
+	.iorq_n			(cpu_iorq_n | sw_gs_off),
+	.m1_n				(cpu_m1_n),
+	.rd_n				(cpu_rd_n),
+	.wr_n				(cpu_wr_n),
+	.oe				(gs_oe_i),
+	.do_bus			(gs_do),
+	.sdram_clk		(SDR_CLK),
+	.sdram_dq		(SDR_DQ),
+	.sdram_a			(SDR_A),
+	.sdram_dqm		(SDR_DQM),
+	.sdram_ba		(SDR_BA),
+	.sdram_we_n		(SDR_WE_N),
+	.sdram_ras_n	(SDR_RAS_N),
+	.sdram_cas_n	(SDR_CAS_N),
+	.loader_act		(ld_rom_act),
+	.loader_a		(ld_addr),
+	.loader_d		(ld_data),
+	.loader_wr		(ld_wr && ld_rom_act),
+	.fl_wr			(1'b0),
+	.fl_a				(32'd0),
+	.fl_d				(8'd0),
+	.opl_addr		(22'd0),
+	.opl_req			(1'b0),
+	.opl_we			(1'b0),
+	.opl_wdata		(8'd0),
+	.opl_ack			(),
+	.opl_rdata		(),
+	.sample_t		(gs_sample_t),
+	.out_l			(gs_out_l),
+	.out_r			(gs_out_r)
+);
+assign gs_oe = gs_oe_i & ~sw_gs_off;
+
+// the GS gives a sample per INT of its Z80 (37.47 kHz): interpolated to clk_bus (audio_lpf.v of core-tsconf)
+wire [15:0] gs_li, gs_ri;
+audio_interp #(.STEP(1401), .STEPS(748)) gs_interp(
+	.clk				(clk_bus),
+	.lin				(1'b1),
+	.sample_t		(gs_sample_t),
+	.in_l				({gs_out_l[14], gs_out_l}),
+	.in_r				({gs_out_r[14], gs_out_r}),
+	.out_l			(gs_li),
+	.out_r			(gs_ri)
+);
+
+// ---------- the sum of the sources ----------
+zxuno_mix mix(
+	.clk				(clk_bus),
+	.zx_l				(zx_audio_l),
+	.zx_r				(zx_audio_r),
+	.gs_l				(sw_gs_off ? 16'sd0 : gs_li),
+	.gs_r				(sw_gs_off ? 16'sd0 : gs_ri),
+	.fm_l				(16'sd0),
+	.fm_r				(16'sd0),
+	.out_l			(audio_l),
+	.out_r			(audio_r)
 );
 
 endmodule
