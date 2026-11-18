@@ -119,7 +119,7 @@ module zxuno (
   // and [20:18] joystick R (JOYCONF codes), [21] mouse off. osd_apply: one clock when an OSD item changed.
   // Timing, contention and issue 2 follow the OSD at all times (MASTERCONF is locked by the boot stub anyway);
   // the others are written into their ZX-Uno registers on a change and at the end of the boot stub.
-  input wire [21:0] osd_cfg,
+  input wire [22:0] osd_cfg,   // karabas: [22] DivMMC off
   input wire osd_apply,
   // karabas: the blanking of the ULA (DE of HDMI), with r / g / b
   output wire video_blank,
@@ -625,6 +625,7 @@ module zxuno (
     .busak_n            (busak_n        ),
     .enable_nmi_n       (enable_nmi_n   ),
     .page_configrom_active         (1'b0),
+    .osd_divmmc_off     (osd_cfg[22]    ),   // karabas
 
 // Interface con la ULA
     .vramaddr           (vram_addr      ),

@@ -222,7 +222,7 @@ wire [31:0] ld_addr;
 wire [7:0] ld_data;
 wire ld_ready;
 
-localparam SW_N = 19;
+localparam SW_N = 20;
 wire [SW_N*8-1:0] softsw;
 wire sw_wr;
 
@@ -382,11 +382,12 @@ wire [1:0] sw_stereo = softsw[15*8 +: 2];    // ABC / ACB / Mono
 wire [2:0] sw_joy_l = softsw[16*8 +: 3];     // Kempston / Sinclair1 / Sinclair2 / Cursor / Fuller / Off
 wire [2:0] sw_joy_r = softsw[17*8 +: 3];
 wire sw_mouse_off = softsw[18*8];
+wire sw_divmmc_off = softsw[19*8];          // DivMMC On / Off (esxDOS starts 48K BASIC; Off: the 128K menu after a reset)
 // option number -> JOYCONF code of ZX-Uno (0 off, 1 Kempston, 2 Sinclair P1, 3 Sinclair P2, 4 cursor, 5 Fuller)
 function [2:0] joy_code(input [2:0] opt);
 	joy_code = (opt >= 3'd5) ? 3'd0 : opt + 3'd1;
 endfunction
-wire [21:0] osd_cfg = { sw_mouse_off, joy_code(sw_joy_r), joy_code(sw_joy_l), sw_stereo, sw_drum_off, sw_saa_off,
+wire [22:0] osd_cfg = { sw_divmmc_off, sw_mouse_off, joy_code(sw_joy_r), joy_code(sw_joy_l), sw_stereo, sw_drum_off, sw_saa_off,
 	sw_ts_off, sw_ay_off, sw_radas_off, sw_timex_off, sw_ulaplus_off, sw_speed[1:0], sw_issue2, sw_cont_off,
 	(sw_timing[1:0] == 2'd3) ? 2'd1 : sw_timing[1:0] };
 reg osd_apply = 1'b0;

@@ -23,7 +23,7 @@
     "boards": {
         "minig": {
             "link": 2,
-            "build": "26111807",
+            "build": "26111808",
             "bitstream": "karabas_minig.bin"
         }
     },
@@ -70,6 +70,16 @@
             "options": [
                 "Issue 3",
                 "Issue 2"
+            ],
+            "default": 0
+        },
+        {
+            "type": "S",
+            "name": "DivMMC",
+            "index": 19,
+            "options": [
+                "On",
+                "Off"
             ],
             "default": 0
         },
