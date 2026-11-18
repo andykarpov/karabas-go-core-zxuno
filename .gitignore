@@ -122,3 +122,5 @@ src/usage_statistics_webtalk.html
 src/webtalk*.*
 src/*_core.log
 src/sim/*.vvp
+# bench test snapshots (src/test, sjasmplus)
+src/test/*.sna

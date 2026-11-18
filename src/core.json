@@ -5,7 +5,7 @@
     "type": "osd",
     "order": 27,
     "eeprom_bank": 255,
-    "rtc_mode": 0,
+    "rtc_mode": 1,
     "roms": [
         {
             "filename": "roms/128en.rom",
@@ -23,7 +23,7 @@
     "boards": {
         "minig": {
             "link": 2,
-            "build": "26111808",
+            "build": "26111809",
             "bitstream": "karabas_minig.bin"
         }
     },
