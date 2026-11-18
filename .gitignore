@@ -121,3 +121,4 @@ src/par_usage_statistics.html
 src/usage_statistics_webtalk.html
 src/webtalk*.*
 src/*_core.log
+src/sim/*.vvp
