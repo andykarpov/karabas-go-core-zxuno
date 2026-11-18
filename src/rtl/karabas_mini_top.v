@@ -162,8 +162,8 @@ ODDR2 u_midi_clk (.Q(MIDI_CLK), .C0(clk_12mhz), .C1(~clk_12mhz), .CE(1'b1), .D0(
 
 assign areset = ~locked;
 
-// PCM1808 ADC (as core-tsconf): the audio of the MIDI synth of the board (and the line in), mixed by ZX-Uno
-// on its MIDI synth input. Half of the ADC scale: the 16-bit mixer of ZX-Uno does not saturate.
+// PCM1808 ADC (as core-tsconf): the audio of the MIDI synth of the board (and the line in), into zxuno_mix
+// (saturated) at half of the ADC scale.
 wire signed [23:0] adc_l, adc_r;
 i2s_transceiver adc(
 	.reset_n			(~areset),
@@ -550,8 +550,8 @@ zxuno #(.MASTERCLK(28000000), .FPGA_MODEL(3'b000)) zxuno (
 	.ext_oe			(gs_oe | opl_oe),
 	.ext_dout			(opl_oe ? opl_do : gs_do),
 	.ext_io_block	(opl_sel),
-	.ext_audio_l		(adc_mix_l),
-	.ext_audio_r		(adc_mix_r),
+	.ext_audio_l		(16'd0),        // the ADC goes to zxuno_mix (saturated), not to the 16-bit mixer of ZX-Uno
+	.ext_audio_r		(16'd0),
 	.i2c_scl				(i2c_scl),
 	.i2c_sda_o			(i2c_sda_m),
 	.i2c_sda_i			(i2c_sda),
@@ -872,6 +872,8 @@ zxuno_mix mix(
 	.gs_r				(sw_gs_off ? 16'sd0 : gs_ri),
 	.fm_l				(sw_opl_off ? 16'sd0 : fm_li),
 	.fm_r				(sw_opl_off ? 16'sd0 : fm_ri),
+	.ext_l			(adc_mix_l),
+	.ext_r			(adc_mix_r),
 	.out_l			(audio_l),
 	.out_r			(audio_r)
 );

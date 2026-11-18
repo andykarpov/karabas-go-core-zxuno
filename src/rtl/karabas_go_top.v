@@ -548,8 +548,8 @@ zxuno #(.MASTERCLK(28000000), .FPGA_MODEL(3'b000)) zxuno (
 	.ext_oe			(gs_oe | opl_oe),
 	.ext_dout			(opl_oe ? opl_do : gs_do),
 	.ext_io_block	(opl_sel),
-	.ext_audio_l		(adc_mix_l),
-	.ext_audio_r		(adc_mix_r),
+	.ext_audio_l		(16'd0),        // the ADC goes to zxuno_mix (saturated), not to the 16-bit mixer of ZX-Uno
+	.ext_audio_r		(16'd0),
 	.i2c_scl				(i2c_scl),
 	.i2c_sda_o			(i2c_sda_m),
 	.i2c_sda_i			(i2c_sda),
@@ -848,6 +848,8 @@ zxuno_mix mix(
 	.gs_r				(sw_gs_off ? 16'sd0 : gs_ri),
 	.fm_l				(sw_opl_off ? 16'sd0 : fm_li),
 	.fm_r				(sw_opl_off ? 16'sd0 : fm_ri),
+	.ext_l			(adc_mix_l),
+	.ext_r			(adc_mix_r),
 	.out_l			(audio_l),
 	.out_r			(audio_r)
 );
