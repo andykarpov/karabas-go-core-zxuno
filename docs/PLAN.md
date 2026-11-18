@@ -90,6 +90,14 @@ ESP8266 через регистры UART ZX-Uno C6 / C7 (`UART_CTS`, сброс 
 
 `dot_matrix` + `audio_peaks` (из karabas-go-modules) на новых регистрах, матрица только на Mini G (на Go / Mini её нет). Переезд tsconf, profi и next на E0 / E1 / E2 и правка `docs/matrix.md` / `matrix.ru.md` прошивки — отдельные PR в их репо; сборки и выпуски этих ядер — вместе, одним заходом.
 
+### Результат Ф3 (2026-11-18, сборка 26111811, Mini G)
+
+- `src/rtl/kg/zxuno_matrix.v`: матрица на регистрах E0 / E1 / E2 (FC3B / FD3B) и peaks индикаторов → `kg_mcu2` (`ENABLE_AUX`). Peaks — размах (max − min) за 20 мс: микшер ZX-Uno в тишине смещён (AY, SAA, beeper ≈ −18432), модуль сэмпла показывал бы полшкалы без звука. Тест `src/sim/tb_matrix.v` (iverilog).
+- tsconf, profi, next: регистры матрицы F0 / F1 / F2 → E0 / E1 / E2; матрица и peaks теперь и в топах Go / Mini у tsconf и next (матрица на I2C у RP2040, её можно подключить к любой плате). Прошивка: `docs/matrix.md` / `matrix.ru.md` (PR #154).
+- Софт пользователя под F0..F2 (`MatrixDemo.bas` / `.tap` на SD2) нужно перевести на 224 / 225 / 226.
+
+9001 LUT (59 %), тайминги выполнены. На плате не проверено.
+
 ## Ф4. General Sound
 
 Копия GS из tsconf (Z80 + ROM GS + SDRAM), порты BB / B3, OSD вкл. / выкл., громкость в общий микшер.

@@ -244,6 +244,9 @@ wire sw_wr;
 wire [7:0] mcu_rtc_a, mcu_rtc_di, mcu_rtc_do;
 wire mcu_rtc_wr;
 
+wire [23:0] matrix_cmd;   // zxuno_matrix (at the end)
+wire matrix_cmd_wr;
+
 kg_mcu2 #(
 	.CAPS(16'h0000),
 	.SW_N(SW_N),
@@ -254,7 +257,7 @@ kg_mcu2 #(
 	.ENABLE_RTC(1),
 	.RTC_SKIP_0D(0),          // as core-next (DS1307 layout)
 	.RTC_SEND_LIMIT(256),
-	.ENABLE_AUX(0),
+	.ENABLE_AUX(1),                  // the dot matrix (zxuno_matrix)
 	.ENABLE_FT(1),
 	.ENABLE_SD2(0)
 ) mcu(
@@ -358,8 +361,8 @@ kg_mcu2 #(
 	.RTC_DI			(mcu_rtc_di),
 	.RTC_CS			(1'b1),
 	.RTC_WR_N		(~mcu_rtc_wr),
-	.MATRIX_CMD		(24'd0),
-	.MATRIX_CMD_WR	(1'b0),
+	.MATRIX_CMD		(matrix_cmd),
+	.MATRIX_CMD_WR	(matrix_cmd_wr),
 	.DEBUG_ADDR		(16'd0),
 	.DEBUG_DATA		(16'd0),
 	.RTC_DO			(mcu_rtc_do),
@@ -474,6 +477,9 @@ kg_cursor #(.Z_W(4), .Z_NEG(1), .Z_ACC(1)) cursor(
 wire [2:0] zx_r, zx_g, zx_b;
 wire zx_hsync, zx_vsync, zx_blank, clk14en;
 wire [15:0] audio_l, audio_r;
+wire [15:0] cpu_a;
+wire [7:0] cpu_do;
+wire cpu_iowr;
 wire [7:0] sram_d8;
 wire sram_we_n, sram_oe_n;
 wire uart_rts;
@@ -527,6 +533,9 @@ zxuno #(.MASTERCLK(28000000), .FPGA_MODEL(3'b000)) zxuno (
 	.audio_left			(audio_l),
 	.audio_right		(audio_r),
 	.midi_out			(MIDI_TX),
+	.cpu_a				(cpu_a),
+	.cpu_do				(cpu_do),
+	.cpu_iowr			(cpu_iowr),
 	.ext_audio_l		(adc_mix_l),
 	.ext_audio_r		(adc_mix_r),
 	.i2c_scl				(i2c_scl),
@@ -725,6 +734,19 @@ kg_pcm5102 #(.DIV_BITS(2)) PCM5102(
 	.din				(DAC_DAT),
 	.bck				(DAC_BCK),
 	.lrck				(DAC_WS)
+);
+
+// ---------- dot matrix + audio peaks (registers E0 / E1 / E2 of ZX-Uno) ----------
+zxuno_matrix matrix(
+	.clk				(clk_bus),
+	.reset			(areset),
+	.audio_l			(audio_l),
+	.audio_r			(audio_r),
+	.iowr				(cpu_iowr),
+	.ioa				(cpu_a),
+	.iod				(cpu_do),
+	.cmd_wr			(matrix_cmd_wr),
+	.cmd				(matrix_cmd)
 );
 
 endmodule
