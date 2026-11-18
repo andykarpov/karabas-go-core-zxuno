@@ -34,7 +34,7 @@
 `define DEFAULT_DIVMMC_ROM "esxdos088.hex"   // karabas: not used, the ROMs are loaded by the firmware (core.json)
 
 `define MIDI_SYNTH_OPTION
-//`define RTC_OPTION   // karabas: no i2c RTC chip on the FPGA; the RTC of kg_mcu2 later (phase 2)
+`define RTC_OPTION   // karabas: the DS1307 is emulated in the top (ds1307.vhd of core-next) on the RTC of kg_mcu2
 `define UART_ESP8266_OPTION
 `define F11_ESP8266_FEATURE
 `define PZX_PLAYER_OPTION

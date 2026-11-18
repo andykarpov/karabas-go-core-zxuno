@@ -33,7 +33,10 @@ module i2c_master (
     output reg [7:0] dout,
     output reg oe,
     output wire sck,
-    inout wire sda
+    // karabas: no tristate inside the FPGA: sda_o = the level the master drives (1 = released), sda_i = the bus
+    // (wired AND with the DS1307 emulation in the top)
+    output wire sda_o,
+    input wire sda_i
     );
     
     `include "../config/config.vh"
@@ -41,8 +44,8 @@ module i2c_master (
     reg rsck = 1'b1;
     reg rsda = 1'b1;
     
-    assign sck = (rsck == 1'b1)? 1'bz : 1'b0;
-    assign sda = (rsda == 1'b1)? 1'bz : 1'b0;
+    assign sck = rsck;    // karabas: was 1'bz / 1'b0
+    assign sda_o = rsda;
     
     always @(posedge clk) begin
       if (rst_n == 1'b0) begin
@@ -54,7 +57,7 @@ module i2c_master (
     end
     
     always @* begin
-      dout = {sda, 7'b0000000};  // at bit 7, to be easily detectable with JP P / JP M
+      dout = {sda_i, 7'b0000000};   // karabas: sda_i  // at bit 7, to be easily detectable with JP P / JP M
       if (zxuno_addr == I2CREG && zxuno_regrd == 1'b1)
         oe = 1'b1;
       else

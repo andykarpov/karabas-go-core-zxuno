@@ -52,18 +52,25 @@ module zxuno (
   input wire ps2_kind,
   input wire ps2_wr,
   input wire ear_ext,
+  output wire tape_out,   // karabas: MIC (port FE bit 3) to TAPE_OUT of the board
   output wire [15:0] audio_left,
   output wire [15:0] audio_right,
 
   // MIDI
   output wire midi_out,
-  input wire clkbd,
-  input wire wsbd,
-  input wire dabd,
+  input wire [15:0] ext_audio_l,   // karabas: the MIDI synth of the board through its ADC (signed), in place
+  input wire [15:0] ext_audio_r,   // of the i2s of the ZXUNO+ synth board (clkbd / wsbd / dabd)
 
   // RTC
   output wire i2c_scl,
-  inout wire i2c_sda,
+  output wire i2c_sda_o,    // karabas: no tristate (i2c_master), the bus is the wired AND in the top
+  input wire i2c_sda_i,
+  // karabas: Gluk CMOS ports (zxuno_cmos) to the RTC of kg_mcu2
+  output wire rtc_sel,
+  output wire [7:0] rtc_a,
+  output wire [7:0] rtc_di,
+  output wire rtc_wr,
+  input wire [7:0] rtc_do,
 
   // UART
   output wire uart_tx,
@@ -243,6 +250,7 @@ module zxuno (
 
   // Fuentes de sonido y control del mixer
   wire        mic;
+  assign tape_out = mic;   // karabas
   wire        spk;
   wire [7:0] ay1_audio;
   wire [7:0] ay2_audio;
@@ -450,6 +458,7 @@ module zxuno (
       oe_ay          : cpudin = ay_dout;
       oe_joystick    : cpudin = joystick_dout;
       oe_i2c         : cpudin = i2c_dout; 
+      oe_cmos        : cpudin = cmos_dout;   // karabas
       default        : cpudin = ula_dout;  // must always be the last "default" option.
     endcase
   end
@@ -1026,7 +1035,7 @@ module zxuno (
     .osd_load           (osd_load       ),
     .osd_saa_off        (osd_cfg[11]    ),
     .a                  (cpuaddr[7:0]   ),
-    .iorq_n             (iorq_n | disable_mixer),
+    .iorq_n             (iorq_n | disable_mixer | cmos_mixer_block),   // karabas: Gluk ports
     .rd_n               (rd_n           ),
     .wr_n               (wr_n           ),
     .din                (cpudout        ),
@@ -1055,14 +1064,8 @@ module zxuno (
 
 
 `ifdef MIDI_SYNTH_OPTION
-  i2s_decoder i2s_midi (
-    .clk(sysclk),
-    .sck(clkbd),
-    .ws(wsbd),
-    .sd(dabd),
-    .left_out(midi_left),
-    .right_out(midi_right)
-  );
+  assign midi_left = ext_audio_l;    // karabas
+  assign midi_right = ext_audio_r;
 `endif
 
 `ifdef RTC_OPTION
@@ -1076,7 +1079,30 @@ module zxuno (
     .dout(i2c_dout),
     .oe(oe_i2c),
     .sck(i2c_scl),
-    .sda(i2c_sda)
+    .sda_o(i2c_sda_o),   // karabas
+    .sda_i(i2c_sda_i)
+  );
+
+  // karabas: Gluk CMOS clock ports
+  wire [7:0] cmos_dout;
+  wire oe_cmos, cmos_mixer_block;
+  zxuno_cmos u_cmos (   // not "cmos": a Verilog keyword
+    .clk(sysclk),
+    .rst_n(rst_n & mrst_n & power_on_reset_n),
+    .a(cpuaddr),
+    .iorq_n(iorq_n),
+    .rd_n(rd_n),
+    .wr_n(wr_n),
+    .m1_n(m1_n),
+    .din(cpudout),
+    .dout(cmos_dout),
+    .oe(oe_cmos),
+    .mixer_block(cmos_mixer_block),
+    .rtc_sel(rtc_sel),
+    .rtc_a(rtc_a),
+    .rtc_di(rtc_di),
+    .rtc_wr(rtc_wr),
+    .rtc_do(rtc_do)
   );
 `endif
 

@@ -139,10 +139,6 @@ assign WWR_N = 1'b1;
 assign WRESET_N = 1'b1;
 assign WD = 16'hZZZZ;
 
-assign TAPE_OUT = 1'b0;
-assign ADC_CLK = 1'b0;
-assign ADC_BCK = 1'bz;
-assign ADC_LRCK = 1'bz;
 assign ESP32_SPI_CS_N = 1'b1;
 
 // ---------- clocks: VCO 50 * 37 / 2 = 925 MHz: clk_sys /11 84.09, clk_8 /116 7.97, clk_bus /33 28.03, /77 12.01
@@ -169,6 +165,25 @@ BUFG bufg_clk_bus(.I(clk_bus_pll), .O(clk_bus));
 ODDR2 u_ft_clk (.Q(FT_CLK_OUT), .C0(clk_8mhz), .C1(~clk_8mhz), .CE(1'b1), .D0(1'b1), .D1(1'b0), .R(1'b0), .S(1'b0));
 
 assign areset = ~locked;
+
+// PCM1808 ADC (as core-tsconf): the audio of the MIDI synth of the board (and the line in), mixed by ZX-Uno
+// on its MIDI synth input. Half of the ADC scale: the 16-bit mixer of ZX-Uno does not saturate.
+wire signed [23:0] adc_l, adc_r;
+i2s_transceiver adc(
+	.reset_n			(~areset),
+	.mclk				(clk_bus),
+	.sclk				(ADC_BCK),
+	.ws				(ADC_LRCK),
+	.sd_tx			(),
+	.sd_rx			(ADC_DOUT),
+	.l_data_tx		(24'b0),
+	.r_data_tx		(24'b0),
+	.l_data_rx		(adc_l),
+	.r_data_rx		(adc_r)
+);
+wire [15:0] adc_mix_l = { adc_l[23], adc_l[23:9] };
+wire [15:0] adc_mix_r = { adc_r[23], adc_r[23:9] };
+ODDR2 oddr_adc(.Q(ADC_CLK), .C0(clk_bus), .C1(~clk_bus), .CE(1'b1), .D0(1'b1), .D1(1'b0), .R(1'b0), .S(1'b0));
 
 // power-on reset of ZX-Uno: ~37 ms after the PLL locked (as tld_zxtres.v) and after the firmware loaded the
 // ROMs (core.json "roms", LD kind 0): the boot stub then sets MASTERCONF and starts the ROM from the SRAM
@@ -225,6 +240,9 @@ wire ld_ready;
 localparam SW_N = 20;
 wire [SW_N*8-1:0] softsw;
 wire sw_wr;
+// RTC of the board (core.json rtc_mode 1: the DS1307 layout, BCD), shared by the DS1307 on I2C and the Gluk ports
+wire [7:0] mcu_rtc_a, mcu_rtc_di, mcu_rtc_do;
+wire mcu_rtc_wr;
 
 kg_mcu2 #(
 	.CAPS(16'h0000),
@@ -233,7 +251,9 @@ kg_mcu2 #(
 	.ENABLE_OSD(1),
 	.ENABLE_IMG(0),
 	.ENABLE_PORTS(4'b0000),
-	.ENABLE_RTC(0),
+	.ENABLE_RTC(1),
+	.RTC_SKIP_0D(0),          // as core-next (DS1307 layout)
+	.RTC_SEND_LIMIT(256),
 	.ENABLE_AUX(0),
 	.ENABLE_FT(1),
 	.ENABLE_SD2(0)
@@ -334,15 +354,15 @@ kg_mcu2 #(
 	.PORT_IN_FULL	(),
 	.PORT_STAT		(),
 	.PORT_STAT_WR	(),
-	.RTC_A			(8'd0),
-	.RTC_DI			(8'd0),
+	.RTC_A			(mcu_rtc_a),
+	.RTC_DI			(mcu_rtc_di),
 	.RTC_CS			(1'b1),
-	.RTC_WR_N		(1'b1),
+	.RTC_WR_N		(~mcu_rtc_wr),
 	.MATRIX_CMD		(24'd0),
 	.MATRIX_CMD_WR	(1'b0),
 	.DEBUG_ADDR		(16'd0),
 	.DEBUG_DATA		(16'd0),
-	.RTC_DO			(),
+	.RTC_DO			(mcu_rtc_do),
 	.FT_SPI_ON		(mcu_ft_spi_on),
 	.FT_VGA_ON		(mcu_ft_vga_on),
 	.FT_RESET		(mcu_ft_reset),
@@ -457,7 +477,29 @@ wire [15:0] audio_l, audio_r;
 wire [7:0] sram_d8;
 wire sram_we_n, sram_oe_n;
 wire uart_rts;
-wire i2c_sda;
+// I2C of ZX-Uno (register F8, bit-banged by the CPU) to the DS1307 emulation of core-next: wired AND
+wire i2c_scl, i2c_sda_m, i2c_sda_s, i2c_scl_s;
+wire i2c_sda = i2c_sda_m & i2c_sda_s;
+wire cmos_sel, cmos_wr;
+wire [7:0] cmos_a, cmos_di, ds_a, ds_di;
+wire ds_wr;
+ds1307 ds1307(
+	.clk				(clk_bus),
+	.reset_n			(~areset),
+	.scl_i			(i2c_scl),
+	.sda_i			(i2c_sda),
+	.scl_o			(i2c_scl_s),
+	.sda_o			(i2c_sda_s),
+	.rtc_a			(ds_a),
+	.rtc_di			(ds_di),
+	.rtc_do			(mcu_rtc_do),
+	.rtc_wr			(ds_wr)
+);
+// the Gluk ports have the bus while the CPU reads / writes BFF7; the DS1307 otherwise (its accesses come with the
+// CPU writes to register F8, never in the same IO cycle)
+assign mcu_rtc_a = cmos_sel ? cmos_a : { 2'b00, ds_a[5:0] };
+assign mcu_rtc_di = cmos_sel ? cmos_di : ds_di;
+assign mcu_rtc_wr = cmos_sel ? cmos_wr : ds_wr;
 
 zxuno #(.MASTERCLK(28000000), .FPGA_MODEL(3'b000)) zxuno (
 	.sysclk				(clk_bus),
@@ -481,14 +523,20 @@ zxuno #(.MASTERCLK(28000000), .FPGA_MODEL(3'b000)) zxuno (
 	.ps2_kind			(mcu_ps2_kind),
 	.ps2_wr				(mcu_ps2_wr),
 	.ear_ext				(tape_in_r),
+	.tape_out			(TAPE_OUT),
 	.audio_left			(audio_l),
 	.audio_right		(audio_r),
 	.midi_out			(MIDI_TX),
-	.clkbd				(1'b0),
-	.wsbd					(1'b0),
-	.dabd					(1'b0),
-	.i2c_scl				(),
-	.i2c_sda				(i2c_sda),
+	.ext_audio_l		(adc_mix_l),
+	.ext_audio_r		(adc_mix_r),
+	.i2c_scl				(i2c_scl),
+	.i2c_sda_o			(i2c_sda_m),
+	.i2c_sda_i			(i2c_sda),
+	.rtc_sel				(cmos_sel),
+	.rtc_a				(cmos_a),
+	.rtc_di				(cmos_di),
+	.rtc_wr				(cmos_wr),
+	.rtc_do				(mcu_rtc_do),
 	.uart_tx				(UART_TX),
 	.uart_rx				(UART_RX),
 	.uart_rts			(uart_rts),
