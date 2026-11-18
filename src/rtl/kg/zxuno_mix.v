@@ -1,4 +1,5 @@
-// karabas: the audio of the board = the mixer of ZX-Uno + the General Sound + the OPL3 (FM of MoonSound).
+// karabas: the audio of the board = the mixer of ZX-Uno + the General Sound + the OPL3 (FM of MoonSound) + the ADC
+// (the MIDI synth of the board on the Mini / Mini G).
 //  - the mixer of ZX-Uno is offset in silence (AY, SAA, beeper: about -18432, it changes with the OSD and
 //    the ports): a DC blocker takes the offset out (one pole, the mean follows with a time constant of
 //    64 x 4096 clocks = 9.4 ms at 28 MHz: -3 dB at 17 Hz), else the sum with the other sources would clip;
@@ -12,6 +13,8 @@ module zxuno_mix (
 	input wire signed [15:0] gs_r,
 	input wire signed [15:0] fm_l,
 	input wire signed [15:0] fm_r,
+	input wire signed [15:0] ext_l,   // the ADC (MIDI synth): not through the mixer of ZX-Uno, which does not saturate
+	input wire signed [15:0] ext_r,
 	output reg signed [15:0] out_l = 16'sd0,
 	output reg signed [15:0] out_r = 16'sd0
 );
@@ -29,8 +32,8 @@ module zxuno_mix (
 	wire signed [16:0] ac_l = {xl[15], xl} - {mean_l[27], mean_l[27:12]};
 	wire signed [16:0] ac_r = {xr[15], xr} - {mean_r[27], mean_r[27:12]};
 
-	wire signed [18:0] sum_l = {{2{ac_l[16]}}, ac_l} + {{3{gs_l[15]}}, gs_l} + {{3{fm_l[15]}}, fm_l};
-	wire signed [18:0] sum_r = {{2{ac_r[16]}}, ac_r} + {{3{gs_r[15]}}, gs_r} + {{3{fm_r[15]}}, fm_r};
+	wire signed [18:0] sum_l = {{2{ac_l[16]}}, ac_l} + {{3{gs_l[15]}}, gs_l} + {{3{fm_l[15]}}, fm_l} + {{3{ext_l[15]}}, ext_l};
+	wire signed [18:0] sum_r = {{2{ac_r[16]}}, ac_r} + {{3{gs_r[15]}}, gs_r} + {{3{fm_r[15]}}, fm_r} + {{3{ext_r[15]}}, ext_r};
 
 	function signed [15:0] sat(input signed [18:0] v);
 		sat = (v > 19'sd32767) ? 16'sd32767 : (v < -19'sd32768) ? -16'sd32768 : v[15:0];

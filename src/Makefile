@@ -39,7 +39,7 @@ PAR_OPT = -ol high -xe n -mt 4
 # included or read by the sources, not in the prj
 INCLUDES = $(wildcard ../modules/rtl/mcu/*.vh) rtl/zxuno/config/config.vh rtl/zxuno/memory/bootloader_karabas.hex rtl/zxuno/memory/zxuno_logo.hex
 
-.PHONY: all clean $(BOARDS) $(BOARDS:=-xst) $(BOARDS:=-impl) $(BOARDS:=-core) $(BOARDS:=-report) minig-coremode
+.PHONY: all clean $(BOARDS) $(BOARDS:=-xst) $(BOARDS:=-impl) $(BOARDS:=-core) $(BOARDS:=-report) mini-coremode minig-coremode
 
 # The pixel clock of HDMI (Mini, Mini G) is a BUFGMUX of clk_bus and the FT812 clock: its flip-flops are on both,
 # and the ucf bounds the paths from clk_bus as asynchronous ones (TS_BUS_TO_PIX). <board>-coremode runs trce again
@@ -88,7 +88,7 @@ karabas_$(1)_core.twr: karabas_$(1).bin pcf_core.py
 	@! grep -q "No timing constraints found" karabas_$(1)_core.twr || { echo "trce did not read karabas_$(1)_core.pcf"; \
 		rm -f karabas_$(1)_core.twr; exit 1; }
 endef
-$(foreach b,minig,$(eval $(call core_mode,$(b))))
+$(foreach b,mini minig,$(eval $(call core_mode,$(b))))
 
 clean:
 	rm -f kg_*.stamp
