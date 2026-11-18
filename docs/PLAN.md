@@ -115,6 +115,15 @@ ESP8266 через регистры UART ZX-Uno C6 / C7 (`UART_CTS`, сброс 
 
 Копия `opl3_fm` из tsconf (FM-часть OPL4): порты FM MoonSound C4..C7, таймеры, `audio_lpf`. Волновой части (7E / 7F, YRW801, SDRAM) нет: не влезает (Ф0).
 
+### Результат Ф5 (2026-11-18, сборка 26111816, Mini G)
+
+- `src/rtl/kg/zxuno_opl3.v`: FM-часть ZXM-MoonSound — `opl3_fm` (opl3_fpga, LGPL-3, `src/rtl/opl3/opl3_fm_gen.v` из core-tsconf) и хостовая часть `opl4.v` для FM (адрес двух банков, NEW / NEW2, таймеры, статус с ID 06, чтение регистров назад для MFM-плеера), всё на 28 МГц; FM 49.5 кГц → `audio_interp` → `zxuno_mix` (×0.375, как FM-микс YMF278B по умолчанию и OPL4 на половине в tsconf).
+- Порты C4..C7. Пока они выбраны, IORQ устройств ZX-Uno снят (`ext_io_block` → `iorq_n_dev` в `zxuno.v`): иначе запись в C4 / C6 попадала бы в ULA (A0 = 0), C4 / C5 при A15 = 0 — в 7FFD, C5 при A15 = 1 — в AY.
+- Пункт OSD «OPL3» (Sound). Волновой части (7E / 7F, YRW801) нет.
+- Тест `src/sim/tb_opl3.v` (iverilog, 30 с): статус, чтение регистра, нота на канале 0 звучит. `opl3_fm` первые 512 тактов после сброса пишет свои начальные значения: записи в это время (18 мкс) теряются, как в tsconf.
+
+12730 LUT (84 %), слайсы 99 %, 23 RAMB16, тайминги выполнены. На плате не проверено.
+
 ## Ф6. Go и Mini, выпуск
 
 Топы Go / Mini, сборка всех плат (`map -t 2`), README.md + README.ru.md, `cores.json` karabas-go.

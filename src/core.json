@@ -27,7 +27,7 @@
     "boards": {
         "minig": {
             "link": 2,
-            "build": "26111815",
+            "build": "26111816",
             "bitstream": "karabas_minig.bin"
         }
     },
@@ -226,6 +226,17 @@
             "type": "S",
             "name": "GS",
             "index": 20,
+            "options": [
+                "On",
+                "Off"
+            ],
+            "default": 0,
+            "page": 2
+        },
+        {
+            "type": "S",
+            "name": "OPL3",
+            "index": 21,
             "options": [
                 "On",
                 "Off"
