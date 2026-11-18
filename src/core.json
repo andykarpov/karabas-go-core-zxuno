@@ -12,7 +12,7 @@
     {"filename": "roms/esxdos089.bin", "address": 196608}
     ],
     "boards": {
-        "minig": {"link": 2, "build": "26111802", "bitstream": "karabas_minig.bin"}
+        "minig": {"link": 2, "build": "26111805", "bitstream": "karabas_minig.bin"}
     },
     "osd": [
     {"type": "T", "name": "Reset", "index": 0, "options": null, "default": 0, "hotkey": "F12"},

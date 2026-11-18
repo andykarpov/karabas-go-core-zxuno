@@ -538,6 +538,16 @@ assign UART_CTS = uart_rts;
 // ---------- video: line doubler, OSD, HDMI ----------
 wire [7:0] video_r, video_g, video_b, osd_r, osd_g, osd_b;
 wire video_hs, video_vs, video_de, osd_hs, osd_vs, osd_de;
+// a new line length of the ULA (timing 48K / 128K / Pentagon): HDMI off for ~150 ms so that the sink detects
+// the new mode (the capture of the bench kept the old line length and slanted the picture)
+wire video_mode_change;
+reg [22:0] hdmi_rst_cnt = 23'd0;
+always @(posedge clk_bus)
+	if (video_mode_change)
+		hdmi_rst_cnt <= 23'h7FFFFF;
+	else if (hdmi_rst_cnt != 23'd0)
+		hdmi_rst_cnt <= hdmi_rst_cnt - 1'd1;
+wire hdmi_restart = (hdmi_rst_cnt != 23'd0);
 zxuno_scandbl #(.CLKVIDEO(28030)) scandbl (
 	.clk				(clk_bus),
 	.clk14en			(clk14en),
@@ -552,7 +562,8 @@ zxuno_scandbl #(.CLKVIDEO(28030)) scandbl (
 	.bo				(video_b),
 	.hsync			(video_hs),
 	.vsync			(video_vs),
-	.de				(video_de)
+	.de				(video_de),
+	.mode_change	(video_mode_change)
 );
 
 kg_l2_osd_overlay overlay(
@@ -594,7 +605,7 @@ kg_hdmi_ft #(.CLKRATE(28030303), .REF_MHZ(8'd28), .SAMPLERATE(48000), .OUTPUT_RE
 	.clk_ref			(clk_bus),
 	.clk_ref_pll	(clk_bus_pll),
 	.clk_8			(clk_8mhz),
-	.reset			(areset),
+	.reset			(areset || hdmi_restart),
 	.vga_rgb			({osd_r, osd_g, osd_b}),
 	.vga_hs			(osd_hs),
 	.vga_vs			(osd_vs),
