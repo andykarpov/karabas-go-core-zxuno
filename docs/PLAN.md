@@ -74,6 +74,18 @@
 
 ESP8266 через регистры UART ZX-Uno C6 / C7 (`UART_CTS`, сброс ESP по F11 → `ESP_RESET_N`), MIDI (порт A AY → `MIDI_TX` синтезатора платы), RTC (регистры ZX-Uno ↔ RTC прошивки), джойстики (Kempston / Fuller / Sinclair), мышь Kempston, PZX-плеер, DMA, Specdrum / Covox.
 
+### Результат Ф2 (2026-11-18, сборка 26111810, Mini G)
+
+Проверено на плате тестами `src/test/rtcesp.asm` и `src/test/periph.asm` (sjasmplus → `.sna`, запуск из NMI-браузера esxDOS):
+
+- RTC: порты Gluk (EFF7 / DFF7 / BFF7 → регистры DS1307 часов прошивки, `rtc_mode` 1) и DS1307 по I2C (регистр F8, эмуляция `ds1307.vhd` из core-next) показывают одно и то же время;
+- ESP8266: на «AT» через C6 / C7 отвечает «OK» (сброса ESP по F11 нет: на Mini G нет `ESP_RESET_N`);
+- MIDI: `PLAY "Y1..."` из 128 BASIC → `MIDI_TX` → синтезатор платы; его звук через АЦП PCM1808 подмешан в микшер ZX-Uno на место входа синтезатора ZXUNO+ (половина шкалы АЦП: микшер 16 бит без насыщения);
+- DMA (память → память), PZX-плеер (SRAM через F0–F2, проигрывание F3: 1000 импульсов = 1000 фронтов на EAR), Specdrum (порт DF), джойстики Kempston / Sinclair / Fuller, мышь Kempston;
+- MIC → `TAPE_OUT`.
+
+8639 LUT (57 %), тайминги выполнены.
+
 ## Ф3. Матрица и peaks
 
 `dot_matrix` + `audio_peaks` (из karabas-go-modules) на новых регистрах, матрица только на Mini G (на Go / Mini её нет). Переезд tsconf, profi и next на E0 / E1 / E2 и правка `docs/matrix.md` / `matrix.ru.md` прошивки — отдельные PR в их репо; сборки и выпуски этих ядер — вместе, одним заходом.

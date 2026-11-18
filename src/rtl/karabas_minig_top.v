@@ -139,9 +139,6 @@ assign WWR_N = 1'b1;
 assign WRESET_N = 1'b1;
 assign WD = 16'hZZZZ;
 
-assign ADC_CLK = 1'b0;
-assign ADC_BCK = 1'bz;
-assign ADC_LRCK = 1'bz;
 assign ESP32_SPI_CS_N = 1'b1;
 
 // ---------- clocks: VCO 50 * 37 / 2 = 925 MHz: clk_sys /11 84.09, clk_8 /116 7.97, clk_bus /33 28.03, /77 12.01
@@ -168,6 +165,25 @@ BUFG bufg_clk_bus(.I(clk_bus_pll), .O(clk_bus));
 ODDR2 u_ft_clk (.Q(FT_CLK_OUT), .C0(clk_8mhz), .C1(~clk_8mhz), .CE(1'b1), .D0(1'b1), .D1(1'b0), .R(1'b0), .S(1'b0));
 
 assign areset = ~locked;
+
+// PCM1808 ADC (as core-tsconf): the audio of the MIDI synth of the board (and the line in), mixed by ZX-Uno
+// on its MIDI synth input. Half of the ADC scale: the 16-bit mixer of ZX-Uno does not saturate.
+wire signed [23:0] adc_l, adc_r;
+i2s_transceiver adc(
+	.reset_n			(~areset),
+	.mclk				(clk_bus),
+	.sclk				(ADC_BCK),
+	.ws				(ADC_LRCK),
+	.sd_tx			(),
+	.sd_rx			(ADC_DOUT),
+	.l_data_tx		(24'b0),
+	.r_data_tx		(24'b0),
+	.l_data_rx		(adc_l),
+	.r_data_rx		(adc_r)
+);
+wire [15:0] adc_mix_l = { adc_l[23], adc_l[23:9] };
+wire [15:0] adc_mix_r = { adc_r[23], adc_r[23:9] };
+ODDR2 oddr_adc(.Q(ADC_CLK), .C0(clk_bus), .C1(~clk_bus), .CE(1'b1), .D0(1'b1), .D1(1'b0), .R(1'b0), .S(1'b0));
 
 // power-on reset of ZX-Uno: ~37 ms after the PLL locked (as tld_zxtres.v) and after the firmware loaded the
 // ROMs (core.json "roms", LD kind 0): the boot stub then sets MASTERCONF and starts the ROM from the SRAM
@@ -511,9 +527,8 @@ zxuno #(.MASTERCLK(28000000), .FPGA_MODEL(3'b000)) zxuno (
 	.audio_left			(audio_l),
 	.audio_right		(audio_r),
 	.midi_out			(MIDI_TX),
-	.clkbd				(1'b0),
-	.wsbd					(1'b0),
-	.dabd					(1'b0),
+	.ext_audio_l		(adc_mix_l),
+	.ext_audio_r		(adc_mix_r),
 	.i2c_scl				(i2c_scl),
 	.i2c_sda_o			(i2c_sda_m),
 	.i2c_sda_i			(i2c_sda),

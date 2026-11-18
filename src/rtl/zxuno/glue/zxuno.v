@@ -58,9 +58,8 @@ module zxuno (
 
   // MIDI
   output wire midi_out,
-  input wire clkbd,
-  input wire wsbd,
-  input wire dabd,
+  input wire [15:0] ext_audio_l,   // karabas: the MIDI synth of the board through its ADC (signed), in place
+  input wire [15:0] ext_audio_r,   // of the i2s of the ZXUNO+ synth board (clkbd / wsbd / dabd)
 
   // RTC
   output wire i2c_scl,
@@ -1065,14 +1064,8 @@ module zxuno (
 
 
 `ifdef MIDI_SYNTH_OPTION
-  i2s_decoder i2s_midi (
-    .clk(sysclk),
-    .sck(clkbd),
-    .ws(wsbd),
-    .sd(dabd),
-    .left_out(midi_left),
-    .right_out(midi_right)
-  );
+  assign midi_left = ext_audio_l;    // karabas
+  assign midi_right = ext_audio_r;
 `endif
 
 `ifdef RTC_OPTION
