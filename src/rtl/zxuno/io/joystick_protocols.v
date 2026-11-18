@@ -38,6 +38,8 @@ module joystick_protocols (
     input wire zxuno_regwr,
     //-- actual joystick and keyboard signals
     input wire [5:0] kbdjoy_in,
+    input wire [7:0] osd_joyconf,   // karabas: JOYCONF of the OSD (DB9 = joystick L, keyboard = joystick R), on osd_load
+    input wire osd_load,
     input wire [5:0] db9joy1_in,
     input wire [5:0] db9joy2_in,
     output wire joy1fire3,
@@ -125,7 +127,9 @@ module joystick_protocols (
     // Update JOYCONF from CPU
     reg [7:0] joyconf = {1'b0,SINCLAIRP1, 1'b0,KEMPSTON};
     always @(posedge clk) begin
-        if (zxuno_addr==JOYCONFADDR && zxuno_regwr==1'b1)
+        if (osd_load)   // karabas
+            joyconf <= osd_joyconf;
+        else if (zxuno_addr==JOYCONFADDR && zxuno_regwr==1'b1)
             joyconf <= din;
     end
 

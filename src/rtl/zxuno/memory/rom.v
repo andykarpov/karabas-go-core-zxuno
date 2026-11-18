@@ -51,14 +51,12 @@ module rom (
      end
   `endif  
 `else
-   reg [7:0] mem[0:255];
-   integer i;
+   // karabas: the firmware loads the ROMs (core.json "roms") into the SRAM banks 8..11 (128K) and the esxDOS
+   // bank before the reset ends; the stub here (bootloader_karabas.asm) shows the ZX-Uno logo, sets MASTERCONF
+   // and starts the ROM
+   reg [7:0] mem[0:8191];   // the stub + the 6912 bytes of the logo (bootloader_karabas.asm)
    initial begin  
-      for (i=0;i<256;i=i+1) begin
-        mem[i] = 8'h00;
-      end
-      $readmemh ("bootloader_copy_bram_to_sram.hex", mem, 0);
-      $readmemh (`DEFAULT_DIVMMC_ROM, mem, 512);      
+      $readmemh ("bootloader_karabas.hex", mem, 0);
    end
 `endif
 

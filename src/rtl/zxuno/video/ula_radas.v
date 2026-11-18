@@ -91,7 +91,8 @@ module ula_radas (
     output wire hsync,
     output wire vsync,
     output wire csync,
-    output wire [8:0] end_count_v
+    output wire [8:0] end_count_v,
+    output wire blank   // karabas: the blanking of pal_sync_generator
     );
 
 `include "../config/config.vh"
@@ -174,7 +175,8 @@ module ula_radas (
     .vsync(vsync),
     .csync(csync),
     .int_n(int_n),
-    .end_count_v(end_count_v)
+    .end_count_v(end_count_v),
+    .blank(blank)   // karabas
     );
 
 ///////////////////////////////////////////////

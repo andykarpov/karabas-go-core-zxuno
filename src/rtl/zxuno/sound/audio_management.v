@@ -60,6 +60,9 @@ Bit position (when 1)
 module panner_and_mixer (
   input wire clk,
   input wire mrst_n,
+  input wire [7:0] osd_mixer,   // karabas: AUDIOMIXER of the OSD (ABC / ACB / Mono), on reset and on osd_load
+  input wire osd_load,
+  input wire osd_saa_off,       // karabas: SAA1099 off in the OSD
   input wire [7:0] a,
   input wire iorq_n,
   input wire rd_n,
@@ -96,8 +99,8 @@ module panner_and_mixer (
   reg [7:0] chan_d = 8'b0000_1111; // all devices for channel D present
   
   always @(posedge clk) begin
-    if (mrst_n == 1'b0)
-      mixer <= 8'b10_01_11_11;
+    if (mrst_n == 1'b0 || osd_load)
+      mixer <= osd_mixer;   // karabas: was 8'b10_01_11_11 (ACB)
     else if (a == AUDIOMIXER && iorq_n == 1'b0 && wr_n == 1'b0)
       mixer <= din;
     else if (a == AUDIODEVSD && iorq_n == 1'b0 && wr_n == 1'b0)
@@ -168,8 +171,8 @@ module panner_and_mixer (
     midi_left_signed <= midi_left;   // Ya viene
     midi_right_signed <= midi_right; // con signo
     
-    saa_left_signed  <= {{3{~saa_left[7]}}, saa_left[6:0], 6'b000000};
-    saa_right_signed <= {{3{~saa_right[7]}}, saa_right[6:0], 6'b000000};
+    saa_left_signed  <= osd_saa_off ? 16'h0000 : {{3{~saa_left[7]}}, saa_left[6:0], 6'b000000};   // karabas: OSD off
+    saa_right_signed <= osd_saa_off ? 16'h0000 : {{3{~saa_right[7]}}, saa_right[6:0], 6'b000000};
     
     mixleft  <= ((mixer[7])? ay_cha_signed : 16'h0000 ) +
                 ((mixer[5])? ay_chb_signed : 16'h0000 ) +

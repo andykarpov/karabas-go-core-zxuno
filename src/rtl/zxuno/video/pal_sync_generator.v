@@ -57,7 +57,8 @@ module pal_sync_generator (
     output reg vsync,
     output reg csync,
     output wire int_n,
-    output reg [8:0] end_count_v = 9'd311
+    output reg [8:0] end_count_v = 9'd311,
+    output wire blank   // karabas: hblank | vblank, the DE of HDMI
     );
 
 `include "../config/config.vh"
@@ -244,6 +245,7 @@ module pal_sync_generator (
         vsync = 1'b1;
     end
         
+    assign blank = hblank | vblank;   // karabas
     always @* begin
       if (hblank == 1'b1 || vblank == 1'b1) begin
         ro = 3'b000;

@@ -43,6 +43,7 @@ module new_memory (
    input wire busak_n,
    output wire enable_nmi_n,
    input wire page_configrom_active,
+   input wire osd_divmmc_off,   // karabas: DivMMC Off in the OSD (esxDOS starts the 48K ROM; Off gives the 128K menu)
 
    // Interface con la ULA
    input wire [13:0] vramaddr,
@@ -167,8 +168,9 @@ module new_memory (
    // DIVMMC automapper
    reg divmmc_is_paged = 1'b0;
    reg divmmc_status_after_m1 = 1'b0;
-   assign enable_nmi_n = divmmc_is_enabled & divmmc_is_paged & ~divmmc_nmi_is_disabled;
-   wire divmmc_rom_active = divmmc_is_enabled && (divmmc_is_paged || conmem);
+   wire divmmc_en = divmmc_is_enabled & ~osd_divmmc_off;   // karabas
+   assign enable_nmi_n = divmmc_en & divmmc_is_paged & ~divmmc_nmi_is_disabled;
+   wire divmmc_rom_active = divmmc_en && (divmmc_is_paged || conmem);
 
    always @(posedge clk) begin
       if (!mrst_n || !rst_n) begin
@@ -555,7 +557,9 @@ module sram_and_mirror (
 `ifdef LOAD_ROM_FROM_FLASH_OPTION
         $readmemh("initial_bootscreen.hex", vram, 0);
 `else
-        $readmemh(`DEFAULT_SYSTEM_ROM, vram, 0);
+        // karabas: no ROM here, the firmware loads it into the SRAM (core.json "roms"); the ZX-Uno logo is on
+        // the screen from the start (also while the firmware loads the ROMs)
+        $readmemh("zxuno_logo.hex", vram, 0);
 `endif        
     end
     
