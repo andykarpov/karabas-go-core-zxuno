@@ -12,7 +12,7 @@ ZX Spectrum for the Karabas Go board family (Xilinx Spartan-6 XC6SLX25), based o
 
 The core file is in `src/`. The 128K ROM, esxDOS 0.8.9 (the DivMMC firmware) and the GS ROM are in it (`core.json` "roms", loaded by the firmware: a new ROM does not need a new bitstream). There is no ZX-Uno BIOS: its settings are in the OSD.
 
-Status: not released. Mini G: the machine, the peripherals and the MIDI synth were checked on a board; the dot matrix, the peaks, the GS and the OPL3 were built and simulated, not run on a board. The Go and Mini builds have not been run on a board.
+Status: build 26111819. Mini G: the machine, the peripherals, the MIDI synth, the dot matrix and its meters, the GS, the OPL3 and the start screen were checked on a board. The Go and Mini builds have not been run on a board.
 
 ## Features
 

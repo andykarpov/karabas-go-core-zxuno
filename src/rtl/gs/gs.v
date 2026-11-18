@@ -120,6 +120,17 @@ reg signed [6:0] port_xx06_reg, port_xx07_reg, port_xx08_reg, port_xx09_reg;
 reg signed [7:0] ch_a_reg, ch_b_reg, ch_c_reg, ch_d_reg;
 reg [6:0] mem;
 
+// the start of a Spectrum access to BB / B3 (one clock)
+wire sp_rd = ~gs_cs_n & ~RD_n;
+wire sp_wr = ~gs_cs_n & ~WR_n;
+reg sp_rd_r = 1'b0, sp_wr_r = 1'b0;
+always @(posedge CLK) begin
+	sp_rd_r <= sp_rd;
+	sp_wr_r <= sp_wr;
+end
+wire sp_rd_go = sp_rd & ~sp_rd_r;
+wire sp_wr_go = sp_wr & ~sp_wr_r;
+
 always @(posedge CLK) begin
 	if (~cpu_iorq_n & cpu_m1_n & CE) begin
 		case(cpu_a_bus[3:0])
@@ -130,10 +141,16 @@ always @(posedge CLK) begin
 			'hB: bit0_flag <= port_xx09_reg[5];
 		endcase
 	end
-	if (~gs_cs_n) begin
-		if (~a & ~RD_n) bit7_flag <= 0;
-		if (~a & ~WR_n) bit7_flag <= 1;
-		if ( a & ~WR_n) bit0_flag <= 1;
+	// karabas (zxuno): the Spectrum side sets / clears the flags once, at the start of its access, not for as
+	// long as it lasts: a CPU held by contention (ZX-Uno: T80a, CEN stopped) keeps IORQ / WR low for
+	// microseconds, the GS meanwhile reads port 2 (clears bit 7) and the level set it again: the GS took the
+	// byte twice and Z-Player modules came out broken (fine with Contention Off)
+	if (sp_rd_go) begin
+		if (~a) bit7_flag <= 0;
+	end
+	if (sp_wr_go) begin
+		if (~a) bit7_flag <= 1;
+		if ( a) bit0_flag <= 1;
 	end
 end
 
