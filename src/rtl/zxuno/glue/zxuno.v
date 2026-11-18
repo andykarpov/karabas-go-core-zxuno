@@ -64,6 +64,7 @@ module zxuno (
   output wire cpu_wr_n,
   output wire cpu_m1_n,
   input wire ext_oe,
+  input wire ext_io_block,
   input wire [7:0] ext_dout,
   output wire [15:0] audio_left,
   output wire [15:0] audio_right,
@@ -227,6 +228,9 @@ module zxuno (
 
   // Seales de la CPU
   wire mreq_n,iorq_n,rd_n,wr_n,int_n,m1_n,nmi_n,rfsh_n,busak_n;
+  // karabas: the IORQ of the devices of ZX-Uno: off while a device of the top takes the port (the OPL3 at
+  // C4..C7 would hit the ULA at A0 = 0, 7FFD at A1 = 0, the AY at BFFD / FFFD)
+  wire iorq_n_dev = iorq_n | ext_io_block;
   wire enable_nmi_n;
   wire [15:0] cpuaddr;
   reg [7:0] cpudin;
@@ -539,7 +543,7 @@ module zxuno (
     .a                  (cpuaddr        ),
     .access_to_contmem  (access_to_screen),
     .mreq_n             (mreq_n         ),
-    .iorq_n             (iorq_n         ),
+    .iorq_n             (iorq_n_dev         ),
     .rd_n               (rd_n           ),
     .wr_n               (wr_n           ),
     .rfsh_n             (rfsh_n         ),
@@ -599,7 +603,7 @@ module zxuno (
 
     .rst_n(rst_n & mrst_n & power_on_reset_n),
     .a                  (cpuaddr        ),
-    .iorq_n             (iorq_n         ),
+    .iorq_n             (iorq_n_dev         ),
     .rd_n               (rd_n           ),
     .wr_n               (wr_n           ),
     .din                (cpudout        ),
@@ -613,7 +617,7 @@ module zxuno (
   flash_and_sd cacharros_con_spi (
     .clk                (sysclk         ),
     .a                  (cpuaddr        ),
-    .iorq_n             (iorq_n         ),
+    .iorq_n             (iorq_n_dev         ),
     .rd_n               (rd_n           ),
     .wr_n               (wr_n           ),
     .addr               (zxuno_addr     ),
@@ -647,7 +651,7 @@ module zxuno (
     .dout               (memory_dout    ),                      // hacia el bus de datos de entrada de la CPU
     .oe                 (oe_romyram     ),                      // el dato es valido
     .mreq_n             (mreq_n         ),
-    .iorq_n             (iorq_n         ),
+    .iorq_n             (iorq_n_dev         ),
     .rd_n               (rd_n           ),
     .wr_n               (wr_n           ),
     .m1_n               (m1_n           ),                      // Necesarios para implementar DIVMMC
@@ -728,7 +732,7 @@ module zxuno (
     .clk                (sysclk         ),
   //-- cpu interface
     .a                  (cpuaddr        ),
-    .iorq_n             (iorq_n         ),
+    .iorq_n             (iorq_n_dev         ),
     .rd_n               (rd_n           ),
     .din                (cpudout        ),
     .dout               (joystick_dout  ),
@@ -828,7 +832,7 @@ module zxuno (
     .osd_speed          (osd_cfg[5:4]   ),   // karabas
     .osd_load           (osd_load       ),
     .turbo_boost_allowed(speed_change_allowed),		// In
-    .iorq_n             (iorq_n         ),
+    .iorq_n             (iorq_n_dev         ),
     .rd_n               (rd_n           ),
     .wr_n               (wr_n           ),
     .zxuno_addr         (zxuno_addr     ),
@@ -884,7 +888,7 @@ module zxuno (
   // karabas: ps2_mouse_kempston replaced by the USB mouse (kg_cursor); MOUSEDATA / MOUSESTATUS not there
   zxuno_kmouse el_raton (
     .a                  (cpuaddr        ),
-    .iorq_n             (iorq_n         ),
+    .iorq_n             (iorq_n_dev         ),
     .rd_n               (rd_n           ),
     .x                  (kmouse_x       ),
     .y                  (kmouse_y       ),
@@ -920,7 +924,7 @@ module zxuno (
 
     .rst_n              (rst_n & mrst_n & power_on_reset_n),
     .a                  (cpuaddr        ),
-    .iorq_n             (iorq_n | disable_specdrum),
+    .iorq_n             (iorq_n_dev | disable_specdrum),
     .wr_n               (wr_n           ),
     .d                  (cpudout        ),
     .specdrum_out_left  (specdrum_left  ),
@@ -932,7 +936,7 @@ module zxuno (
     .clk(sysclk),
     .rst_n(rst_n & mrst_n & power_on_reset_n),
     .a(cpuaddr),
-    .iorq_n(iorq_n),
+    .iorq_n(iorq_n_dev),
     .rd_n(rd_n),
     .wr_n(wr_n),
     .din(cpudout),
@@ -1001,8 +1005,8 @@ module zxuno (
   wire portF5 = cpuaddr[7:0] == TIMEXAYADDR;
   wire portF6 = cpuaddr[7:0] == TIMEXAYDATA;
 
-  assign bdir = !iorq_n && (((portF5 || portF6) && !wr_n) || ((portBFFD || portFFFD) && !wr_n));
-  assign bc1  = !iorq_n && (portF5 && !wr_n) || (portF6 && !rd_n) || (portFFFD && (!rd_n || !wr_n));
+  assign bdir = !iorq_n_dev && (((portF5 || portF6) && !wr_n) || ((portBFFD || portFFFD) && !wr_n));
+  assign bc1  = !iorq_n_dev && (portF5 && !wr_n) || (portF6 && !rd_n) || (portFFFD && (!rd_n || !wr_n));
 
   wire[7:0] ay_port_din // = { joy1fire1, 3'b111, joy1right, joy1left, joy1down, joy1up };
     = cpuaddr[8] ? { joy1fire1, 3'b111, joy1right, joy1left, joy1down, joy1up }
@@ -1036,7 +1040,7 @@ module zxuno (
     .clk_sys            (sysclk         ),               // 8 MHz
     .ce                 (clk7en         ),               // 8 MHz
     .rst_n              (rst_n & mrst_n & power_on_reset_n),
-    .cs_n               ((cpuaddr[7:0] != 255) | iorq_n),
+    .cs_n               ((cpuaddr[7:0] != 255) | iorq_n_dev),
     .a0                 (cpuaddr[8]     ),               // 0=data, 1=address
     .wr_n               (wr_n           ),
     .din                (cpudout        ),
@@ -1056,7 +1060,7 @@ module zxuno (
     .osd_load           (osd_load       ),
     .osd_saa_off        (osd_cfg[11]    ),
     .a                  (cpuaddr[7:0]   ),
-    .iorq_n             (iorq_n | disable_mixer | cmos_mixer_block),   // karabas: Gluk ports
+    .iorq_n             (iorq_n_dev | disable_mixer | cmos_mixer_block),   // karabas: Gluk ports
     .rd_n               (rd_n           ),
     .wr_n               (wr_n           ),
     .din                (cpudout        ),
@@ -1111,7 +1115,7 @@ module zxuno (
     .clk(sysclk),
     .rst_n(rst_n & mrst_n & power_on_reset_n),
     .a(cpuaddr),
-    .iorq_n(iorq_n),
+    .iorq_n(iorq_n_dev),
     .rd_n(rd_n),
     .wr_n(wr_n),
     .m1_n(m1_n),

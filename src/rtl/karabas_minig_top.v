@@ -399,6 +399,7 @@ wire [2:0] sw_joy_r = softsw[17*8 +: 3];
 wire sw_mouse_off = softsw[18*8];
 wire sw_divmmc_off = softsw[19*8];          // DivMMC On / Off (esxDOS starts 48K BASIC; Off: the 128K menu after a reset)
 wire sw_gs_off = softsw[20*8];               // General Sound On / Off
+wire sw_opl_off = softsw[21*8];              // OPL3 (FM of MoonSound) On / Off
 // option number -> JOYCONF code of ZX-Uno (0 off, 1 Kempston, 2 Sinclair P1, 3 Sinclair P2, 4 cursor, 5 Fuller)
 function [2:0] joy_code(input [2:0] opt);
 	joy_code = (opt >= 3'd5) ? 3'd0 : opt + 3'd1;
@@ -474,6 +475,8 @@ wire [15:0] zx_audio_l, zx_audio_r;   // the mixer of ZX-Uno (offset in silence)
 wire signed [15:0] audio_l, audio_r;   // zxuno_mix: + GS + OPL3, DC removed, saturated
 wire gs_oe;
 wire [7:0] gs_do;
+wire opl_oe, opl_sel;
+wire [7:0] opl_do;
 wire cpu_mreq_n, cpu_iorq_n, cpu_rd_n, cpu_wr_n, cpu_m1_n;
 wire [15:0] cpu_a;
 wire [7:0] cpu_do;
@@ -539,8 +542,9 @@ zxuno #(.MASTERCLK(28000000), .FPGA_MODEL(3'b000)) zxuno (
 	.cpu_rd_n			(cpu_rd_n),
 	.cpu_wr_n			(cpu_wr_n),
 	.cpu_m1_n			(cpu_m1_n),
-	.ext_oe			(gs_oe),
-	.ext_dout			(gs_do),
+	.ext_oe			(gs_oe | opl_oe),
+	.ext_dout			(opl_oe ? opl_do : gs_do),
+	.ext_io_block	(opl_sel),
 	.ext_audio_l		(adc_mix_l),
 	.ext_audio_r		(adc_mix_r),
 	.i2c_scl				(i2c_scl),
@@ -817,6 +821,40 @@ audio_interp #(.STEP(1401), .STEPS(748)) gs_interp(
 	.out_r			(gs_ri)
 );
 
+// ---------- OPL3: the FM part of the ZXM-MoonSound (ports C4..C7) ----------
+reg [1:0] opl_rst_s = 2'b11;
+always @(posedge clk_bus) opl_rst_s <= { opl_rst_s[0], ~locked | ~kbd_rst_n | sw_hard_reset | sw_opl_off };
+wire signed [15:0] fm_out_l, fm_out_r;
+wire fm_sample_t;
+zxuno_opl3 opl3(
+	.clk				(clk_bus),
+	.reset			(opl_rst_s[1]),
+	.en				(~sw_opl_off),
+	.a					(cpu_a[7:0]),
+	.di				(cpu_do),
+	.dout				(opl_do),
+	.iorq_n			(cpu_iorq_n),
+	.m1_n				(cpu_m1_n),
+	.rd_n				(cpu_rd_n),
+	.wr_n				(cpu_wr_n),
+	.sel				(opl_sel),
+	.oe				(opl_oe),
+	.out_l			(fm_out_l),
+	.out_r			(fm_out_r),
+	.sample_t		(fm_sample_t)
+);
+// 49.5 kHz -> clk_bus: 566.3 clocks a sample, STEP = 2^20 / 566 rounded down
+wire [15:0] fm_li, fm_ri;
+audio_interp #(.STEP(1852), .STEPS(566)) fm_interp(
+	.clk				(clk_bus),
+	.lin				(1'b1),
+	.sample_t		(fm_sample_t),
+	.in_l				(fm_out_l),
+	.in_r				(fm_out_r),
+	.out_l			(fm_li),
+	.out_r			(fm_ri)
+);
+
 // ---------- the sum of the sources ----------
 zxuno_mix mix(
 	.clk				(clk_bus),
@@ -824,8 +862,8 @@ zxuno_mix mix(
 	.zx_r				(zx_audio_r),
 	.gs_l				(sw_gs_off ? 16'sd0 : gs_li),
 	.gs_r				(sw_gs_off ? 16'sd0 : gs_ri),
-	.fm_l				(16'sd0),
-	.fm_r				(16'sd0),
+	.fm_l				(sw_opl_off ? 16'sd0 : fm_li),
+	.fm_r				(sw_opl_off ? 16'sd0 : fm_ri),
 	.out_l			(audio_l),
 	.out_r			(audio_r)
 );
