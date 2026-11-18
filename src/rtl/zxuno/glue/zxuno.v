@@ -40,8 +40,17 @@ module zxuno (
   output wire vrampage,
   output wire [1:0] monochrome_switcher,  
   output wire [1:0] interlace_mode,
-  inout wire clkps2,
-  inout wire dataps2,
+  // karabas: no PS/2 port. The keyboard matrix comes from hid_parser of the board (USB HID): rows = A15..A8,
+  // cols back; the resets from the OSD / F12 / board button; SCANCODE / KBSTATUS from the PS/2 bytes the
+  // firmware makes of the USB keys
+  output wire [7:0] kbd_rows,
+  input wire [4:0] kbd_cols,
+  input wire kbd_rst_n,
+  input wire kbd_mrst_n,
+  input wire kbd_nmi_n,
+  input wire [7:0] ps2_code,
+  input wire ps2_kind,
+  input wire ps2_wr,
   input wire ear_ext,
   output wire [15:0] audio_left,
   output wire [15:0] audio_right,
@@ -100,8 +109,12 @@ module zxuno (
   output wire joy1fire3,
 
   // MOUSE
-  inout wire mouseclk,
-  inout wire mousedata,
+  // karabas: the Kempston mouse from kg_cursor of the USB mouse
+  input wire [7:0] kmouse_x,
+  input wire [7:0] kmouse_y,
+  input wire [2:0] kmouse_b,
+  // karabas: the blanking of the ULA (DE of HDMI), with r / g / b
+  output wire video_blank,
 
   // SCANDOUBLER CTRL
   output wire clk14en_tovga,
@@ -530,7 +543,8 @@ module zxuno (
     .hsync              (hsync          ),
     .vsync              (vsync          ),
     .csync              (csync          ),
-    .end_count_v        (end_count_v	 ));
+    .end_count_v        (end_count_v	 ),
+    .blank              (video_blank    ));   // karabas
 
   zxunoregs addr_reg_zxuno (
     .clk(sysclk),
@@ -636,32 +650,30 @@ module zxuno (
     .sram_we_n          (sram_we_n      ),
     .sram_oe_n          (sram_oe_n)     );
 
-  ps2_keyb el_teclado (
+  // karabas: ps2_keyb (PS/2 port, keymap, special keys) replaced by the board HID path
+  assign kbd_rows = kbdrow;
+  assign kbdcol = kbd_cols;
+  assign kbd_joy = 6'd0;                  // no numeric keypad joystick (the joysticks of kg_mcu2 go to DB9)
+  assign rst_n = kbd_rst_n;
+  assign mrst_n = kbd_mrst_n;
+  assign nmi_n = kbd_nmi_n;
+  assign user_fnt = 14'd0;                // F-key functions (PZX keys, turbo boost, wifi): OSD items later
+  assign video_output_change = 1'b0;
+  assign monochrome_switcher = 2'b00;
+  assign interlace_mode = 2'b00;
+  assign oe_keymap = 1'b0;
+  assign keymap_dout = 8'hFF;
+  zxuno_scancode scancode_regs (
     .clk                (sysclk         ),
-    .clkps2             (clkps2         ),
-    .dataps2            (dataps2        ),
-    .rows               (kbdrow         ),
-    .cols               (kbdcol         ),
-    .joy                (kbd_joy        ),                      // Implementacin joystick en teclado numerico
-    .rst_out_n          (rst_n          ),                      // esto son salidas, no entradas
-    .nmi_out_n          (nmi_n          ),                      // Seales de reset y NMI
-    .mrst_out_n         (mrst_n         ),                      // generadas por pulsaciones especiales del teclado
-    .user_fnt           (user_fnt       ),                      // funciones de usuario
-    .video_output_change(video_output_change),
-  //----------------------------
+    .ps2_code           (ps2_code       ),
+    .ps2_kind           (ps2_kind       ),
+    .ps2_wr             (ps2_wr         ),
     .zxuno_addr         (zxuno_addr     ),
     .zxuno_regrd        (zxuno_regrd    ),
-    .zxuno_regwr        (zxuno_regwr    ),
-    .regaddr_changed    (regaddr_changed),
-    .din                (cpudout        ),
-    .keymap_dout        (keymap_dout    ),
-    .oe_keymap          (oe_keymap      ),
-    .scancode_dout      (scancode_dout  ),
     .oe_scancode        (oe_scancode    ),
-    .kbstatus_dout      (kbstatus_dout  ),
+    .scancode_dout      (scancode_dout  ),
     .oe_kbstatus        (oe_kbstatus    ),
-    .monochrome_switcher(monochrome_switcher),
-    .interlace_mode     (interlace_mode ));
+    .kbstatus_dout      (kbstatus_dout  ));
 
   joystick_protocols los_joysticks (
     .clk                (sysclk         ),
@@ -814,27 +826,20 @@ module zxuno (
 //        .page_configrom_active(page_configrom_active)
 //    );
 
-  ps2_mouse_kempston el_raton (
-    .clk(sysclk),
-    .rst_n(rst_n & mrst_n & power_on_reset_n),
-
-    .clkps2             (mouseclk       ),
-    .dataps2            (mousedata      ),
-  //---------------------------------
+  // karabas: ps2_mouse_kempston replaced by the USB mouse (kg_cursor); MOUSEDATA / MOUSESTATUS not there
+  zxuno_kmouse el_raton (
     .a                  (cpuaddr        ),
     .iorq_n             (iorq_n         ),
     .rd_n               (rd_n           ),
+    .x                  (kmouse_x       ),
+    .y                  (kmouse_y       ),
+    .b                  (kmouse_b       ),
     .kmouse_dout        (kmouse_dout    ),
-    .oe_kmouse          (oe_kmouse      ),
-  //---------------------------------
-    .zxuno_addr         (zxuno_addr     ),
-    .zxuno_regrd        (zxuno_regrd    ),
-    .zxuno_regwr        (zxuno_regwr    ),
-    .din                (cpudout        ),
-    .mousedata_dout     (mousedata_dout ),
-    .oe_mousedata       (oe_mousedata   ),
-    .mousestatus_dout   (mousestatus_dout),
-    .oe_mousestatus     (oe_mousestatus ));
+    .oe_kmouse          (oe_kmouse      ));
+  assign oe_mousedata = 1'b0;
+  assign oe_mousestatus = 1'b0;
+  assign mousedata_dout = 8'hFF;
+  assign mousestatus_dout = 8'hFF;
 
 
 `ifdef MULTIBOOT_SUPPORT

@@ -23,7 +23,7 @@
 
 // Build options (comment out to disable a specific option)
 
-`define LOAD_ROM_FROM_FLASH_OPTION
+//`define LOAD_ROM_FROM_FLASH_OPTION   // karabas: no flash of the core; the ROMs below are in the bitstream (.kg)
 
 `ifndef A35T
   //`define INCLUDE_EASTER_EGG   // karabas: not now (16K BRAM)
@@ -31,10 +31,10 @@
 
 // The following two defines are taken into account only if LOAD_ROM_FROM_FLASH_OPTION is not defined
 `define DEFAULT_SYSTEM_ROM "128en.hex"
-`define DEFAULT_DIVMMC_ROM "esxdos089.hex"
+`define DEFAULT_DIVMMC_ROM "esxdos088.hex"   // karabas: 0.8.9 is not in the EXP28 tree
 
 `define MIDI_SYNTH_OPTION
-`define RTC_OPTION
+//`define RTC_OPTION   // karabas: no i2c RTC chip on the FPGA; the RTC of kg_mcu2 later (phase 2)
 `define UART_ESP8266_OPTION
 `define F11_ESP8266_FEATURE
 `define PZX_PLAYER_OPTION

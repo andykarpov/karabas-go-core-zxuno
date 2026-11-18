@@ -1,0 +1,18 @@
+{
+    "id": "zxuno",
+    "name": "ZX-Uno",
+    "visible": true,
+    "type": "osd",
+    "order": 27,
+    "eeprom_bank": 255,
+    "rtc_mode": 0,
+    "roms": [],
+    "boards": {
+        "minig": {"link": 2, "build": "26111801", "bitstream": "karabas_minig.bin"}
+    },
+    "osd": [
+    {"type": "T", "name": "Reset", "index": 0, "options": null, "default": 0, "hotkey": "F12"},
+    {"type": "T", "name": "NMI", "index": 1, "options": null, "default": 0, "hotkey": "F11"},
+    {"type": "T", "name": "Hard reset", "index": 2, "options": null, "default": 0, "hotkey": "Menu+F12"}
+    ]
+}

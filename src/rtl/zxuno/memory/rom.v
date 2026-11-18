@@ -51,13 +51,10 @@ module rom (
      end
   `endif  
 `else
-   reg [7:0] mem[0:255];
+   reg [7:0] mem[0:8703];   // karabas: was [0:255], esxDOS (8K) is loaded at 512
    integer i;
    initial begin  
-      for (i=0;i<256;i=i+1) begin
-        mem[i] = 8'h00;
-      end
-      $readmemh ("bootloader_copy_bram_to_sram.hex", mem, 0);
+      $readmemh ("bootloader_copy_bram_to_sram.hex", mem, 0);   // karabas: no zero loop (XST loop limit)
       $readmemh (`DEFAULT_DIVMMC_ROM, mem, 512);      
    end
 `endif
