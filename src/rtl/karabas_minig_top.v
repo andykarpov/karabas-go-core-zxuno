@@ -6,7 +6,8 @@
 -- the line doubler, HDMI in the mode of the core), clk_sys 84.09 MHz (for the General Sound later), clk_8 7.97 MHz
 -- (FT_CLK_OUT, DCM_CLKGEN of HDMI), 12 MHz (unused on the Mini G).
 -- Memory: the 2 MB of ZX-Uno on the low byte of the SRAM (MD[7:0], MWR_N[0], MRD_N[0]); the ROMs (128K, esxDOS)
--- are in block RAM of the bitstream and copied to the SRAM by the boot stub of ZX-Uno (no flash, no BIOS).
+-- are loaded by the firmware (core.json "roms") into their SRAM banks; the boot stub of ZX-Uno only sets
+-- MASTERCONF (no flash, no BIOS).
 -- Video: the ULA (PAL timing of 48K / 128K / Pentagon) -> zxuno_scandbl (line doubler with DE) -> OSD -> HDMI.
 -- Input: USB keyboard (hid_parser -> the Spectrum matrix), USB mouse (kg_cursor -> Kempston), joysticks of
 -- kg_mcu2 on the DB9 inputs of ZX-Uno (joystick_protocols: Kempston / Fuller / Sinclair / cursor by JOYCONF).
@@ -169,12 +170,14 @@ ODDR2 u_ft_clk (.Q(FT_CLK_OUT), .C0(clk_8mhz), .C1(~clk_8mhz), .CE(1'b1), .D0(1'
 
 assign areset = ~locked;
 
-// power-on reset of ZX-Uno: ~37 ms after the PLL locked (as tld_zxtres.v)
+// power-on reset of ZX-Uno: ~37 ms after the PLL locked (as tld_zxtres.v) and after the firmware loaded the
+// ROMs (core.json "roms", LD kind 0): the boot stub then sets MASTERCONF and starts the ROM from the SRAM
+wire ld_rom_act;
 reg [19:0] por_cnt = 20'h00000;
 reg por_n = 1'b0;
 always @(posedge clk_bus) begin
 	por_n <= (por_cnt == 20'hFFFFF);
-	if (!locked)
+	if (!locked || ld_rom_act)
 		por_cnt <= 20'h00000;
 	else if (por_cnt != 20'hFFFFF)
 		por_cnt <= por_cnt + 1'd1;
@@ -213,6 +216,11 @@ wire [4:0] osd_px, osd_ph;
 wire [3:0] osd_py;
 wire [5:0] osd_pw;
 wire mcu_ft_spi_on, mcu_ft_vga_on, mcu_ft_reset, mcu_ft_sck, mcu_ft_mosi, mcu_ft_cs_n;
+wire [1:0] ld_kind;
+wire ld_active, ld_wr;
+wire [31:0] ld_addr;
+wire [7:0] ld_data;
+wire ld_ready;
 
 localparam SW_N = 4;
 wire [SW_N*8-1:0] softsw;
@@ -271,16 +279,16 @@ kg_mcu2 #(
 	.JOY_WR			(),
 	.PS2_CMD			(16'h0000),
 	.PS2_CMD_WR		(1'b0),
-	.LD_KIND			(),
+	.LD_KIND			(ld_kind),
 	.LD_SLOT			(),
 	.LD_SIZE			(),
 	.LD_START		(),
-	.LD_ACTIVE		(),
+	.LD_ACTIVE		(ld_active),
 	.LD_END			(),
-	.LD_ADDR			(),
-	.LD_DATA			(),
-	.LD_WR			(),
-	.LD_READY		(1'b1),
+	.LD_ADDR			(ld_addr),
+	.LD_DATA			(ld_data),
+	.LD_WR			(ld_wr),
+	.LD_READY		(ld_ready),
 	.OSD_WR			(osd_wr),
 	.OSD_WADDR		(osd_waddr),
 	.OSD_WDATA		(osd_wdata),
@@ -457,7 +465,7 @@ zxuno #(.MASTERCLK(28000000), .FPGA_MODEL(3'b000)) zxuno (
 	.uart_rx				(UART_RX),
 	.uart_rts			(uart_rts),
 	.uart_reset			(),
-	.sram_addr			(MA),
+	.sram_addr			(zx_sram_a),
 	.sram_data			(MD[7:0]),
 	.sram_we_n			(sram_we_n),
 	.sram_oe_n			(sram_oe_n),
@@ -500,9 +508,31 @@ zxuno #(.MASTERCLK(28000000), .FPGA_MODEL(3'b000)) zxuno (
 	.mb_uart_tx			(),
 	.mb_uart_rx			(1'b1)
 );
+// ---------- the ROM loader: core.json "roms" (LD kind 0) into the SRAM of ZX-Uno ----------
+// The SRAM addresses are those of ZX-Uno (21 bits): 128K ROM banks 8..11 at 0x20000, esxDOS at 0x30000.
+// ZX-Uno is held in reset (por_n) while the loader owns the SRAM. A byte: address + data out, /WE low for two
+// clocks of clk_bus (71 ns), one clock after it with /WE high; LD_READY low meanwhile.
+assign ld_rom_act = ld_active && ld_kind == 2'd0;
+reg [20:0] ld_a = 21'd0;
+reg [7:0] ld_d = 8'd0;
+reg [1:0] ld_st = 2'd0;
+reg ld_we_n = 1'b1;
+always @(posedge clk_bus) begin
+	case (ld_st)
+		2'd0: if (ld_wr && ld_rom_act) begin ld_a <= ld_addr[20:0]; ld_d <= ld_data; ld_st <= 2'd1; end
+		2'd1: begin ld_we_n <= 1'b0; ld_st <= 2'd2; end
+		2'd2: begin ld_st <= 2'd3; end
+		2'd3: begin ld_we_n <= 1'b1; ld_st <= 2'd0; end
+	endcase
+end
+assign ld_ready = (ld_st == 2'd0);
+
+wire [20:0] zx_sram_a;
+assign MA = ld_rom_act ? ld_a : zx_sram_a;
+assign MD[7:0] = ld_rom_act ? ld_d : 8'hZZ;   // ZX-Uno does not drive the bus in reset
 assign MD[15:8] = 8'hZZ;
-assign MWR_N = { 1'b1, sram_we_n };
-assign MRD_N = { 1'b1, sram_oe_n };
+assign MWR_N = { 1'b1, ld_rom_act ? ld_we_n : sram_we_n };
+assign MRD_N = { 1'b1, ld_rom_act ? 1'b1 : sram_oe_n };
 assign UART_CTS = uart_rts;
 
 // ---------- video: line doubler, OSD, HDMI ----------

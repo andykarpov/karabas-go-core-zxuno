@@ -6,9 +6,13 @@
     "order": 27,
     "eeprom_bank": 255,
     "rtc_mode": 0,
-    "roms": [],
+    "roms": [
+    {"filename": "roms/128en.rom", "address": 131072},
+    {"filename": "roms/128en.rom", "address": 163840},
+    {"filename": "roms/esxdos089.bin", "address": 196608}
+    ],
     "boards": {
-        "minig": {"link": 2, "build": "26111801", "bitstream": "karabas_minig.bin"}
+        "minig": {"link": 2, "build": "26111802", "bitstream": "karabas_minig.bin"}
     },
     "osd": [
     {"type": "T", "name": "Reset", "index": 0, "options": null, "default": 0, "hotkey": "F12"},

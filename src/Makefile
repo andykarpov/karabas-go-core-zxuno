@@ -35,7 +35,7 @@ MAP_OPT = -logic_opt off -ol high -xe n -xt 0 -register_duplication off -r 4 -gl
 PAR_OPT = -ol high -xe n -mt 4
 
 # included or read by the sources, not in the prj
-INCLUDES = $(wildcard ../modules/rtl/mcu/*.vh) rtl/zxuno/config/config.vh $(wildcard rtl/zxuno/memory/*.hex)
+INCLUDES = $(wildcard ../modules/rtl/mcu/*.vh) rtl/zxuno/config/config.vh rtl/zxuno/memory/bootloader_karabas.hex rtl/zxuno/memory/zxuno_logo.hex
 
 .PHONY: all clean $(BOARDS) $(BOARDS:=-xst) $(BOARDS:=-impl) $(BOARDS:=-core) $(BOARDS:=-report) minig-coremode
 

@@ -555,7 +555,9 @@ module sram_and_mirror (
 `ifdef LOAD_ROM_FROM_FLASH_OPTION
         $readmemh("initial_bootscreen.hex", vram, 0);
 `else
-        $readmemh(`DEFAULT_SYSTEM_ROM, vram, 0);
+        // karabas: no ROM here, the firmware loads it into the SRAM (core.json "roms"); the ZX-Uno logo is on
+        // the screen from the start (also while the firmware loads the ROMs)
+        $readmemh("zxuno_logo.hex", vram, 0);
 `endif        
     end
     
