@@ -53,6 +53,10 @@ module zxuno (
   input wire ps2_wr,
   input wire ear_ext,
   output wire tape_out,   // karabas: MIC (port FE bit 3) to TAPE_OUT of the board
+  // karabas: the CPU I/O writes, for the dot matrix of the board (registers E0..E2 in the top)
+  output wire [15:0] cpu_a,
+  output wire [7:0] cpu_do,
+  output wire cpu_iowr,
   output wire [15:0] audio_left,
   output wire [15:0] audio_right,
 
@@ -251,6 +255,9 @@ module zxuno (
   // Fuentes de sonido y control del mixer
   wire        mic;
   assign tape_out = mic;   // karabas
+  assign cpu_a = cpuaddr;      // karabas
+  assign cpu_do = cpudout;
+  assign cpu_iowr = ~iorq_n & ~wr_n & m1_n;
   wire        spk;
   wire [7:0] ay1_audio;
   wire [7:0] ay2_audio;
