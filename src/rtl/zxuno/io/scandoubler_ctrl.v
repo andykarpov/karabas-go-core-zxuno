@@ -29,6 +29,8 @@ module scandoubler_ctrl (
   input wire kbd_change_video_output,
   input wire kbd_turbo_boost,
   input wire turbo_boost_allowed,
+  input wire [1:0] osd_speed,   // karabas: the CPU speed of the OSD (3.5 / 7 / 14 / 28 MHz), loaded on osd_load
+  input wire osd_load,
   input wire iorq_n,
   input wire rd_n,
   input wire wr_n,
@@ -99,7 +101,11 @@ module scandoubler_ctrl (
         ff_toggle_turbo <= 1'b0;
     end
       
-    if (zxuno_addr == SCANDBLCTRL && zxuno_regwr == 1'b1) begin
+    if (osd_load) begin   // karabas
+      scandblctrl[7:6] <= osd_speed;
+      cpu_speed_reg <= {2'b00, osd_speed};
+    end
+    else if (zxuno_addr == SCANDBLCTRL && zxuno_regwr == 1'b1) begin
       scandblctrl <= din;
       cpu_speed_reg <= {4'b00, din[7:6]};
     end

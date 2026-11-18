@@ -26,6 +26,10 @@
 module control_enable_options(
     input wire clk,
     input wire rst_n,
+    // karabas: the OSD values (1 = off): AY, Turbosound, ULAplus, Timex screen, Radastan, Specdrum; loaded on
+    // reset and on osd_load (an OSD change or the end of the boot stub); the CPU can still write the registers
+    input wire [5:0] osd_off,
+    input wire osd_load,
     input wire [7:0] zxuno_addr,
     input wire zxuno_regrd,
     input wire zxuno_regwr,
@@ -101,8 +105,12 @@ module control_enable_options(
     
     always @(posedge clk) begin
         if (rst_n == 1'b0) begin
-            devoptions <= 8'h00;  // or after a hardware reset (not implemented yet)
-            devopts2 <= 8'h00;
+            devoptions <= {6'b000000, osd_off[1:0]};  // karabas: AY / Turbosound of the OSD (was 8'h00)
+            devopts2 <= {4'h0, osd_off[5:2]};         // karabas: ULAplus / Timex / Radastan / Specdrum of the OSD
+        end
+        else if (osd_load) begin                    // karabas
+            devoptions[1:0] <= osd_off[1:0];
+            devopts2[3:0] <= osd_off[5:2];
         end
         else if (zxuno_addr == DEVOPTIONS && zxuno_regwr == 1'b1)
             devoptions <= din;

@@ -113,6 +113,14 @@ module zxuno (
   input wire [7:0] kmouse_x,
   input wire [7:0] kmouse_y,
   input wire [2:0] kmouse_b,
+  // karabas: the settings of the OSD (core.json): [1:0] timing (00 48K, 01 128K, 10 Pentagon), [2] contention
+  // off, [3] issue 2 keyboard, [5:4] CPU speed, [6] ULAplus off, [7] Timex off, [8] Radastan off, [9] AY off,
+  // [10] Turbosound off, [11] SAA off, [12] Specdrum off, [14:13] stereo (ABC / ACB / Mono), [17:15] joystick L
+  // and [20:18] joystick R (JOYCONF codes), [21] mouse off. osd_apply: one clock when an OSD item changed.
+  // Timing, contention and issue 2 follow the OSD at all times (MASTERCONF is locked by the boot stub anyway);
+  // the others are written into their ZX-Uno registers on a change and at the end of the boot stub.
+  input wire [21:0] osd_cfg,
+  input wire osd_apply,
   // karabas: the blanking of the ULA (DE of HDMI), with r / g / b
   output wire video_blank,
 
@@ -282,8 +290,18 @@ module zxuno (
   // Configuracin ULA
   wire [1:0] timing_mode;
   assign ula_mode = timing_mode;
-  wire issue2_keyboard;
-  wire disable_contention;
+  // karabas: the OSD settings
+  wire [1:0] timing_mode_reg;               // MASTERCONF of new_memory: not used, the OSD gives the timing
+  wire disable_contention_reg, issue2_keyboard_reg;
+  assign timing_mode = osd_cfg[1:0];
+  reg in_boot_mode_d = 1'b1;
+  always @(posedge sysclk) in_boot_mode_d <= in_boot_mode;
+  wire osd_load = osd_apply | (in_boot_mode_d & ~in_boot_mode);
+  wire [7:0] osd_mixer = (osd_cfg[14:13] == 2'd0) ? 8'b10_11_01_11 :    // ABC
+                         (osd_cfg[14:13] == 2'd1) ? 8'b10_01_11_11 :    // ACB (the ZX-Uno default)
+                                                    8'b11_11_11_11;     // mono
+  wire issue2_keyboard = osd_cfg[3];   // karabas: OSD
+  wire disable_contention = osd_cfg[2];   // karabas: OSD
   wire access_to_screen;
   wire doc_ext_option; // bit 7 del puerto $FF del Timex
   wire ioreqbank;
@@ -613,9 +631,9 @@ module zxuno (
     .vramdout           (vram_dout      ),
     .vrampage           (vrampage       ),
     .doc_ext_option     (doc_ext_option ),
-    .issue2_keyboard_enabled(issue2_keyboard),
-    .timing_mode        (timing_mode    ),
-    .disable_contention (disable_contention),
+    .issue2_keyboard_enabled(issue2_keyboard_reg),   // karabas: the OSD gives these three
+    .timing_mode        (timing_mode_reg),
+    .disable_contention (disable_contention_reg),
     .access_to_screen   (access_to_screen),
     .ioreqbank          (ioreqbank      ),
 
@@ -689,6 +707,8 @@ module zxuno (
     .zxuno_regrd        (zxuno_regrd    ),
     .zxuno_regwr        (zxuno_regwr    ),
   //-- actual joystick and keyboard signals
+    .osd_joyconf        ({1'b0, osd_cfg[17:15], 1'b0, osd_cfg[20:18]}),   // karabas: DB9 = L, keyboard = R
+    .osd_load           (osd_load       ),
     .kbdjoy_in          (kbd_joy        ),
     .db9joy1_in({joy1fire2, joy1fire1, joy1up, joy1down, joy1left, joy1right}),
 	.db9joy2_in({joy2fire2, joy2fire1, joy2up, joy2down, joy2left, joy2right}),
@@ -744,6 +764,8 @@ module zxuno (
   control_enable_options device_enables (
     .clk                (sysclk),
 
+    .osd_off            ({osd_cfg[12], osd_cfg[8], osd_cfg[7], osd_cfg[6], osd_cfg[10], osd_cfg[9]}),   // karabas
+    .osd_load           (osd_load       ),
     .rst_n              (mrst_n & power_on_reset_n),
     .zxuno_addr         (zxuno_addr     ),
     .zxuno_regrd        (zxuno_regrd    ),
@@ -772,6 +794,8 @@ module zxuno (
     .a                  (cpuaddr        ),
     .kbd_change_video_output(video_output_change),	// In
     .kbd_turbo_boost    (turbo_boost    ),		// In
+    .osd_speed          (osd_cfg[5:4]   ),   // karabas
+    .osd_load           (osd_load       ),
     .turbo_boost_allowed(speed_change_allowed),		// In
     .iorq_n             (iorq_n         ),
     .rd_n               (rd_n           ),
@@ -835,7 +859,9 @@ module zxuno (
     .y                  (kmouse_y       ),
     .b                  (kmouse_b       ),
     .kmouse_dout        (kmouse_dout    ),
-    .oe_kmouse          (oe_kmouse      ));
+    .oe_kmouse          (oe_kmouse_m    ));
+  wire oe_kmouse_m;
+  assign oe_kmouse = oe_kmouse_m & ~osd_cfg[21];   // karabas: Mouse Off in the OSD
   assign oe_mousedata = 1'b0;
   assign oe_mousestatus = 1'b0;
   assign mousedata_dout = 8'hFF;
@@ -995,6 +1021,9 @@ module zxuno (
    panner_and_mixer audio_mix (
     .clk                (sysclk         ),
     .mrst_n             (mrst_n         ),
+    .osd_mixer          (osd_mixer      ),   // karabas
+    .osd_load           (osd_load       ),
+    .osd_saa_off        (osd_cfg[11]    ),
     .a                  (cpuaddr[7:0]   ),
     .iorq_n             (iorq_n | disable_mixer),
     .rd_n               (rd_n           ),

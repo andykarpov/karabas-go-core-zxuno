@@ -2,7 +2,8 @@
 ; (ZX-Uno, GPL-3). The firmware has already written the ROMs into the SRAM (core.json "roms": 128K ROM in banks
 ; 8..11, esxDOS at 0x30000), so nothing is copied from block RAM. The stub shows the ZX-Uno logo of the BIOS
 ; (zxdos/zxuno firmware/logo256x192.rcs.zx7b, unpacked to zxuno_logo.scr) for about 1.5 s, then sets
-; MASTERCONF (128K, DivMMC + esxDOS, locked, boot mode off), clears the DivMMC RAM and starts the 128K ROM.
+; MASTERCONF (DivMMC + esxDOS, locked, boot mode off; the timing bits are ignored, the OSD gives it), clears the
+; DivMMC RAM and starts the 128K ROM.
 ; Build: sjasmplus --raw=bootloader_karabas.bin bootloader_karabas.asm (then bin -> hex, see the Makefile)
 
 ZXUNOADDR             equ 0FC3Bh
@@ -51,11 +52,10 @@ UltimaFaseEnRAM       ld bc,ZXUNOADDR
                       inc b
                       ld a,10010010b            ; 128K, DivMMC + esxDOS, locked, no boot
                       out (c),a
-                      ld bc,MAPPER128K
-                      ld a,00010000b
+                      ld bc,MAPPER128K          ; ROM 0 (the 128K editor: the 128K menu). The original stub wrote
+                      xor a                     ; 10h / 04h = ROM 3, here a copy of the 48K ROM: 48K BASIC started
                       out (c),a
                       ld bc,MAPPERPLUS3
-                      ld a,00000100b
                       out (c),a
 
                       ld a,80h                  ; clear the 16 pages of DivMMC RAM (CONMEM), forces a restart
@@ -71,14 +71,8 @@ BucleEraseDivMMC      out (DIVIDECTRL),a
                       xor a
                       out (DIVIDECTRL),a
 
-                      ld bc,ZXUNOADDR           ; back to 3.5 MHz, start the 128K ROM
-                      ld a,SCANDBLCTRL
-                      out (c),a
-                      inc b
-                      in a,(c)
-                      and 3Fh
-                      out (c),a
-                      jp 0
+                      jp 0                      ; start the 128K ROM: the CPU speed is that of the OSD, which the
+                                                ; core loads when MASTERCONF leaves the boot mode
 LongUltimaFase        equ $-UltimaFaseEnRAM
 
 Logo                  incbin "zxuno_logo.scr"

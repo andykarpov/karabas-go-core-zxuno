@@ -7,16 +7,259 @@
     "eeprom_bank": 255,
     "rtc_mode": 0,
     "roms": [
-    {"filename": "roms/128en.rom", "address": 131072},
-    {"filename": "roms/128en.rom", "address": 163840},
-    {"filename": "roms/esxdos089.bin", "address": 196608}
+        {
+            "filename": "roms/128en.rom",
+            "address": 131072
+        },
+        {
+            "filename": "roms/128en.rom",
+            "address": 163840
+        },
+        {
+            "filename": "roms/esxdos089.bin",
+            "address": 196608
+        }
     ],
     "boards": {
-        "minig": {"link": 2, "build": "26111805", "bitstream": "karabas_minig.bin"}
+        "minig": {
+            "link": 2,
+            "build": "26111807",
+            "bitstream": "karabas_minig.bin"
+        }
     },
     "osd": [
-    {"type": "T", "name": "Reset", "index": 0, "options": null, "default": 0, "hotkey": "F12"},
-    {"type": "T", "name": "NMI", "index": 1, "options": null, "default": 0, "hotkey": "F11"},
-    {"type": "T", "name": "Hard reset", "index": 2, "options": null, "default": 0, "hotkey": "Menu+F12"}
+        {
+            "type": "S",
+            "name": "Timing",
+            "index": 3,
+            "options": [
+                "48K",
+                "128K",
+                "Pentagon"
+            ],
+            "default": 1,
+            "hotkey": "Menu+F1"
+        },
+        {
+            "type": "S",
+            "name": "CPU speed",
+            "index": 4,
+            "options": [
+                "3.5 MHz",
+                "7 MHz",
+                "14 MHz",
+                "28 MHz"
+            ],
+            "default": 0,
+            "hotkey": "Menu+F2"
+        },
+        {
+            "type": "S",
+            "name": "Contention",
+            "index": 5,
+            "options": [
+                "On",
+                "Off"
+            ],
+            "default": 0
+        },
+        {
+            "type": "S",
+            "name": "Keyboard",
+            "index": 6,
+            "options": [
+                "Issue 3",
+                "Issue 2"
+            ],
+            "default": 0
+        },
+        {
+            "type": "-"
+        },
+        {
+            "type": "M",
+            "name": "Video",
+            "open": 1
+        },
+        {
+            "type": "M",
+            "name": "Sound",
+            "open": 2
+        },
+        {
+            "type": "M",
+            "name": "Input",
+            "open": 3
+        },
+        {
+            "type": "-"
+        },
+        {
+            "type": "T",
+            "name": "NMI",
+            "index": 1,
+            "options": null,
+            "default": 0,
+            "hotkey": "F11"
+        },
+        {
+            "type": "T",
+            "name": "Reset",
+            "index": 0,
+            "options": null,
+            "default": 0,
+            "hotkey": "F12"
+        },
+        {
+            "type": "T",
+            "name": "Hard reset",
+            "index": 2,
+            "options": null,
+            "default": 0,
+            "hotkey": "Menu+F12"
+        },
+        {
+            "type": "S",
+            "name": "ULAplus",
+            "index": 7,
+            "options": [
+                "On",
+                "Off"
+            ],
+            "default": 0,
+            "page": 1
+        },
+        {
+            "type": "S",
+            "name": "Timex",
+            "index": 8,
+            "options": [
+                "On",
+                "Off"
+            ],
+            "default": 0,
+            "page": 1
+        },
+        {
+            "type": "S",
+            "name": "Radastan",
+            "index": 9,
+            "options": [
+                "On",
+                "Off"
+            ],
+            "default": 0,
+            "page": 1
+        },
+        {
+            "type": "S",
+            "name": "Palette",
+            "index": 10,
+            "options": [
+                "Colour",
+                "Green",
+                "Amber",
+                "Grey"
+            ],
+            "default": 0,
+            "page": 1
+        },
+        {
+            "type": "S",
+            "name": "AY",
+            "index": 11,
+            "options": [
+                "On",
+                "Off"
+            ],
+            "default": 0,
+            "page": 2
+        },
+        {
+            "type": "S",
+            "name": "Turbosound",
+            "index": 12,
+            "options": [
+                "On",
+                "Off"
+            ],
+            "default": 0,
+            "page": 2
+        },
+        {
+            "type": "S",
+            "name": "SAA1099",
+            "index": 13,
+            "options": [
+                "On",
+                "Off"
+            ],
+            "default": 0,
+            "page": 2
+        },
+        {
+            "type": "S",
+            "name": "Specdrum",
+            "index": 14,
+            "options": [
+                "On",
+                "Off"
+            ],
+            "default": 0,
+            "page": 2
+        },
+        {
+            "type": "S",
+            "name": "Stereo",
+            "index": 15,
+            "options": [
+                "ABC",
+                "ACB",
+                "Mono"
+            ],
+            "default": 1,
+            "page": 2
+        },
+        {
+            "type": "S",
+            "name": "Joystick L",
+            "index": 16,
+            "options": [
+                "Kempston",
+                "Sinclair1",
+                "Sinclair2",
+                "Cursor",
+                "Fuller",
+                "Off"
+            ],
+            "default": 0,
+            "page": 3
+        },
+        {
+            "type": "S",
+            "name": "Joystick R",
+            "index": 17,
+            "options": [
+                "Kempston",
+                "Sinclair1",
+                "Sinclair2",
+                "Cursor",
+                "Fuller",
+                "Off"
+            ],
+            "default": 1,
+            "page": 3
+        },
+        {
+            "type": "S",
+            "name": "Mouse",
+            "index": 18,
+            "options": [
+                "On",
+                "Off"
+            ],
+            "default": 0,
+            "page": 3
+        }
     ]
 }

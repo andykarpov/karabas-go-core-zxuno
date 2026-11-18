@@ -222,8 +222,9 @@ wire [31:0] ld_addr;
 wire [7:0] ld_data;
 wire ld_ready;
 
-localparam SW_N = 4;
+localparam SW_N = 19;
 wire [SW_N*8-1:0] softsw;
+wire sw_wr;
 
 kg_mcu2 #(
 	.CAPS(16'h0000),
@@ -247,7 +248,7 @@ kg_mcu2 #(
 	.MCU_SPI_FT_SS	(MCU_IO[3]),
 	.MCU_SPI_SD2_SS(1'b1),
 	.SW				(softsw),
-	.SW_WR			(),
+	.SW_WR			(sw_wr),
 	.SW_INDEX		(),
 	.SW_VALUE		(),
 	.HW_ID			(hwid),
@@ -364,6 +365,32 @@ assign FT_SPI_MOSI = mcu_ft_spi_on ? mcu_ft_mosi : 1'b1;
 wire sw_reset = softsw[0];        // 0 Reset (F12)
 wire sw_nmi = softsw[8];          // 1 NMI (F11): the esxDOS browser
 wire sw_hard_reset = softsw[16];  // 2 Hard reset: the master reset of ZX-Uno (boot stub again)
+// 3.. the settings (index in core.json); option numbers as in core.json
+wire [7:0] sw_timing = softsw[3*8 +: 8];     // 48K / 128K / Pentagon
+wire [7:0] sw_speed = softsw[4*8 +: 8];      // 3.5 / 7 / 14 / 28 MHz
+wire sw_cont_off = softsw[5*8];              // Contention On / Off
+wire sw_issue2 = softsw[6*8];                // Keyboard Issue 3 / Issue 2
+wire sw_ulaplus_off = softsw[7*8];
+wire sw_timex_off = softsw[8*8];
+wire sw_radas_off = softsw[9*8];
+wire [1:0] sw_palette = softsw[10*8 +: 2];   // Colour / Green / Amber / Grey
+wire sw_ay_off = softsw[11*8];
+wire sw_ts_off = softsw[12*8];
+wire sw_saa_off = softsw[13*8];
+wire sw_drum_off = softsw[14*8];
+wire [1:0] sw_stereo = softsw[15*8 +: 2];    // ABC / ACB / Mono
+wire [2:0] sw_joy_l = softsw[16*8 +: 3];     // Kempston / Sinclair1 / Sinclair2 / Cursor / Fuller / Off
+wire [2:0] sw_joy_r = softsw[17*8 +: 3];
+wire sw_mouse_off = softsw[18*8];
+// option number -> JOYCONF code of ZX-Uno (0 off, 1 Kempston, 2 Sinclair P1, 3 Sinclair P2, 4 cursor, 5 Fuller)
+function [2:0] joy_code(input [2:0] opt);
+	joy_code = (opt >= 3'd5) ? 3'd0 : opt + 3'd1;
+endfunction
+wire [21:0] osd_cfg = { sw_mouse_off, joy_code(sw_joy_r), joy_code(sw_joy_l), sw_stereo, sw_drum_off, sw_saa_off,
+	sw_ts_off, sw_ay_off, sw_radas_off, sw_timex_off, sw_ulaplus_off, sw_speed[1:0], sw_issue2, sw_cont_off,
+	(sw_timing[1:0] == 2'd3) ? 2'd1 : sw_timing[1:0] };
+reg osd_apply = 1'b0;
+always @(posedge clk_bus) osd_apply <= sw_wr;   // a clock later: SW holds the new value
 wire [1:0] hw_btn = mcu_btns[1:0];
 
 wire kbd_rst_n = ~(sw_reset | hw_btn[0] | mcu_busy);
@@ -506,7 +533,9 @@ zxuno #(.MASTERCLK(28000000), .FPGA_MODEL(3'b000)) zxuno (
 	.ad724_mode			(),
 	.ad724_enable_gencolorclk(),
 	.mb_uart_tx			(),
-	.mb_uart_rx			(1'b1)
+	.mb_uart_rx			(1'b1),
+	.osd_cfg				(osd_cfg),
+	.osd_apply			(osd_apply)
 );
 // ---------- the ROM loader: core.json "roms" (LD kind 0) into the SRAM of ZX-Uno ----------
 // The SRAM addresses are those of ZX-Uno (21 bits): 128K ROM banks 8..11 at 0x20000, esxDOS at 0x30000.
@@ -566,6 +595,21 @@ zxuno_scandbl #(.CLKVIDEO(28030)) scandbl (
 	.mode_change	(video_mode_change)
 );
 
+// Palette of the OSD: colour, or the luminance as green / amber phosphor or grey (Y = (77 R + 150 G + 29 B) / 256)
+wire [15:0] luma = 8'd77 * video_r + 8'd150 * video_g + 8'd29 * video_b;
+wire [7:0] y8 = luma[15:8];
+reg [7:0] pal_r = 8'd0, pal_g = 8'd0, pal_b = 8'd0;
+reg pal_hs = 1'b0, pal_vs = 1'b0, pal_de = 1'b0;
+always @(posedge clk_bus) begin
+	case (sw_palette)
+		2'd0: begin pal_r <= video_r; pal_g <= video_g; pal_b <= video_b; end
+		2'd1: begin pal_r <= 8'd0; pal_g <= y8; pal_b <= 8'd0; end                     // green
+		2'd2: begin pal_r <= y8; pal_g <= y8 - (y8 >> 2); pal_b <= 8'd0; end           // amber
+		2'd3: begin pal_r <= y8; pal_g <= y8; pal_b <= y8; end                         // grey
+	endcase
+	pal_hs <= video_hs; pal_vs <= video_vs; pal_de <= video_de;
+end
+
 kg_l2_osd_overlay overlay(
 	.wclk				(clk_bus),
 	.osd_wr			(osd_wr),
@@ -584,10 +628,10 @@ kg_l2_osd_overlay overlay(
 	.icon_on			(8'd0),
 	.icon_act		(8'd0),
 	.clk				(clk_bus),
-	.rgb_i			({video_r, video_g, video_b}),
-	.hs_i				(video_hs),
-	.vs_i				(video_vs),
-	.de_i				(video_de),
+	.rgb_i			({pal_r, pal_g, pal_b}),
+	.hs_i				(pal_hs),
+	.vs_i				(pal_vs),
+	.de_i				(pal_de),
 	.rgb_o			({osd_r, osd_g, osd_b}),
 	.hs_o				(osd_hs),
 	.vs_o				(osd_vs),
