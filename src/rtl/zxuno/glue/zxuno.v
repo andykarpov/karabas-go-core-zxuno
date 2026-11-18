@@ -57,6 +57,14 @@ module zxuno (
   output wire [15:0] cpu_a,
   output wire [7:0] cpu_do,
   output wire cpu_iowr,
+  // karabas: the CPU bus for the devices of the top (General Sound, OPL3): their read data into cpudin
+  output wire cpu_mreq_n,
+  output wire cpu_iorq_n,
+  output wire cpu_rd_n,
+  output wire cpu_wr_n,
+  output wire cpu_m1_n,
+  input wire ext_oe,
+  input wire [7:0] ext_dout,
   output wire [15:0] audio_left,
   output wire [15:0] audio_right,
 
@@ -258,6 +266,11 @@ module zxuno (
   assign cpu_a = cpuaddr;      // karabas
   assign cpu_do = cpudout;
   assign cpu_iowr = ~iorq_n & ~wr_n & m1_n;
+  assign cpu_mreq_n = mreq_n;
+  assign cpu_iorq_n = iorq_n;
+  assign cpu_rd_n = rd_n;
+  assign cpu_wr_n = wr_n;
+  assign cpu_m1_n = m1_n;
   wire        spk;
   wire [7:0] ay1_audio;
   wire [7:0] ay2_audio;
@@ -439,6 +452,7 @@ module zxuno (
   always @* begin
     case (1'b1)
       oe_intack      : cpudin = 8'hFF;  // valor del bus de datos durante una interrupcin enmascarable aceptada
+      ext_oe         : cpudin = ext_dout;   // karabas: GS / OPL3 of the top
       oe_zxunoaddr   : cpudin = zxuno_addr_to_cpu;
       oe_spi         : cpudin = spi_dout;
       oe_scancode    : cpudin = scancode_dout;

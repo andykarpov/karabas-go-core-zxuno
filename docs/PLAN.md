@@ -102,6 +102,15 @@ ESP8266 через регистры UART ZX-Uno C6 / C7 (`UART_CTS`, сброс 
 
 Копия GS из tsconf (Z80 + ROM GS + SDRAM), порты BB / B3, OSD вкл. / выкл., громкость в общий микшер.
 
+### Результат Ф4 (2026-11-18, сборка 26111815, Mini G)
+
+- `src/rtl/gs/`: `gs_top.v`, `gs.v`, `sdram2p.v`, `audio_lpf.v` (интерполятор) из core-tsconf, Z80 GS — z80-silicon (`src/rtl/z80-silicon/`, как в tsconf); память GS в SDRAM, ПЗУ `roms/gs105b.rom` из `core.json` по адресу 80000000 (загрузчик топа пишет в SRAM только адреса ниже).
+- Порты BB / B3, чтение через новый вход `ext_oe` / `ext_dout` в шину данных ZX-Uno. Пункт OSD «GS» (Sound): Off — GS не видит CPU, звук выключен, GS в сбросе.
+- `src/rtl/kg/zxuno_mix.v`: снятие постоянной составляющей со звука ZX-Uno (−3 дБ на 17 Гц) и сумма с GS (и OPL3 в Ф5) в 19 битах с насыщением; на HDMI, ЦАП и peaks идёт эта сумма.
+- `SW_N` 22 (20 GS, 21 OPL3).
+
+10173 LUT (67 %), слайсы 90 %, тайминги выполнены. На плате не проверено.
+
 ## Ф5. OPL3 (FM-часть MoonSound)
 
 Копия `opl3_fm` из tsconf (FM-часть OPL4): порты FM MoonSound C4..C7, таймеры, `audio_lpf`. Волновой части (7E / 7F, YRW801, SDRAM) нет: не влезает (Ф0).
