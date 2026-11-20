@@ -21,7 +21,7 @@ ZX Spectrum для плат семейства Karabas Go (Xilinx Spartan-6 XC6S
 - **Звук:** два AY (Turbosound), SAA1099, Specdrum / Covox, бипер и лента; **General Sound** (порты BB / B3, его Z80 и 2 МБ памяти в SDRAM); **OPL3** — FM-часть ZXM-MoonSound (порты C4..C7, без волновой части); MIDI-синтезатор платы на порту A AY (`PLAY "Y1..."` 128K BASIC), на Mini / Mini G его звук возвращается через АЦП в общую смесь.
 - **Светодиодная матрица** (дополнительная плата на I2C): индикаторы уровня звука и рисование со стороны Спектрума через регистры ZX-Uno **E0 / E1 / E2** (karabas-go-firmware `docs/matrix.ru.md`).
 - **ESP8266** (Wi-Fi) на регистрах UART ZX-Uno C6 / C7.
-- **Часы:** RTC платы как CMOS Gluk (порты EFF7 / DFF7 / BFF7) и как DS1307 на I2C ZX-Uno (регистр F8).
+- **Часы:** RTC платы как CMOS Gluk (порты EFF7 / DFF7 / BFF7) и как DS1307 на I2C ZX-Uno (регистр F8) и ZX Next (порты 103B / 113B).
 - **Управление:** USB-клавиатура, два джойстика (Kempston, Sinclair 1 / 2, курсорный, Fuller), Kempston-мышь (порты FBDF / FFDF / FADF).
 - **Видео:** картинка ULA с удвоением строк, 720 x 576, 50 Гц; цветная или как на зелёном / янтарном / сером мониторе.
 
@@ -42,7 +42,7 @@ ZX Spectrum для плат семейства Karabas Go (Xilinx Spartan-6 XC6S
 - скопируйте папки `SYS` и `BIN` из [esxdos090.zip](https://www.esxdos.org/files/esxdos090.zip) в корень SD2 (системные команды теперь лежат в `SYS/BIN`, их старые копии в `BIN` больше не используются);
 - длинные имена файлов: возьмите новый `SYS/CONFIG/ESXDOS.CFG` или добавьте в свой строку `LFN=1`;
 - ZX Next на той же карте: замените `machines/next/ESXMMC.BIN` на `ROMS/esxdos-0.9.0-divmmc.bin` из архива, переименовав его в `ESXMMC.BIN` (машинам Next с DivMMC нужна та же версия, что и в `SYS`);
-- `NMI.SYS` / `RTC.SYS`, сделанные для старых версий esxDOS, нужно пересобрать под новые адреса ($2000 / $2F00);
+- `NMI.SYS` / `RTC.SYS`, сделанные для старых версий esxDOS, нужно пересобрать под новые адреса ($2000 / $2F00). `RTC.SYS` для 0.9.0 (RTC.SYS от Next, порты 103B / 113B, по адресу $2F00) лежит в [karabas-go software/esxdos](https://github.com/andykarpov/karabas-go/tree/master/software/esxdos): скопируйте его в `SYS` SD2;
 - сама ПЗУ лежит в `zxuno.kg`: прошивать её лентами `FLASHERS` из архива не нужно.
 
 ## Меню OSD
@@ -71,7 +71,7 @@ ZX Spectrum для плат семейства Karabas Go (Xilinx Spartan-6 XC6S
 | Регистры ZX-Uno | FC3B (регистр) / FD3B (данные) |
 | Матрица | регистры E0 (управление), E1 (x / y), E2 (цвет) |
 | ESP8266 | регистры C6 (данные), C7 (состояние) |
-| Часы | Gluk: EFF7 (бит 7 — включить), DFF7 (адрес), BFF7 (данные); DS1307: I2C на регистре F8 |
+| Часы | Gluk: EFF7 (бит 7 — включить), DFF7 (адрес), BFF7 (данные); DS1307: I2C на регистре F8 и на портах ZX Next 103B (SCL) / 113B (SDA) |
 | General Sound | BB (команда / состояние), B3 (данные) |
 | OPL3 (FM MoonSound) | C4 / C5 банк 0, C6 / C7 банк 1 (адрес / данные) |
 | Kempston-мышь | FBDF (x), FFDF (y), FADF (кнопки) |

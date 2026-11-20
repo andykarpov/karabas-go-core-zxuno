@@ -484,12 +484,31 @@ wire cpu_iowr;
 wire [7:0] sram_d8;
 wire sram_we_n, sram_oe_n;
 wire uart_rts;
-// I2C of ZX-Uno (register F8, bit-banged by the CPU) to the DS1307 emulation of core-next: wired AND
-wire i2c_scl, i2c_sda_m, i2c_sda_s, i2c_scl_s;
-wire i2c_sda = i2c_sda_m & i2c_sda_s;
+// I2C of ZX-Uno (register F8, bit-banged by the CPU) and of ZX Next (ports 103B SCL / 113B SDA, bit 0, as core-next:
+// the RTC.SYS of esxDOS for the Next works here) to the DS1307 emulation of core-next: wired AND
+wire i2c_scl_m, i2c_sda_m, i2c_sda_s, i2c_scl_s;
+reg nx_scl = 1'b1, nx_sda = 1'b1;
+wire i2c_scl = i2c_scl_m & nx_scl;
+wire i2c_sda = i2c_sda_m & nx_sda & i2c_sda_s;
+wire nx_103b = cpu_a == 16'h103B && !cpu_iorq_n && cpu_m1_n;
+wire nx_113b = cpu_a == 16'h113B && !cpu_iorq_n && cpu_m1_n;
+always @(posedge clk_bus) begin
+	if (areset) begin
+		nx_scl <= 1'b1;
+		nx_sda <= 1'b1;
+	end
+	else begin
+		if (nx_103b && !cpu_wr_n) nx_scl <= cpu_do[0];
+		if (nx_113b && !cpu_wr_n) nx_sda <= cpu_do[0];
+	end
+end
+wire nx_oe = (nx_103b || nx_113b) && !cpu_rd_n;
+wire [7:0] nx_do = { 7'b1111111, nx_103b ? i2c_scl : i2c_sda };
 wire cmos_sel, cmos_wr;
 wire [7:0] cmos_a, cmos_di, ds_a, ds_di;
 wire ds_wr;
+// the RTC.SYS of the Next checks the signature "ZX" in the RAM registers 3E / 3F of the DS1307
+wire [7:0] ds_do = ds_a[5:0] == 6'h3E ? 8'h5A : ds_a[5:0] == 6'h3F ? 8'h58 : mcu_rtc_do;
 ds1307 ds1307(
 	.clk				(clk_bus),
 	.reset_n			(~areset),
@@ -499,11 +518,11 @@ ds1307 ds1307(
 	.sda_o			(i2c_sda_s),
 	.rtc_a			(ds_a),
 	.rtc_di			(ds_di),
-	.rtc_do			(mcu_rtc_do),
+	.rtc_do			(ds_do),
 	.rtc_wr			(ds_wr)
 );
 // the Gluk ports have the bus while the CPU reads / writes BFF7; the DS1307 otherwise (its accesses come with the
-// CPU writes to register F8, never in the same IO cycle)
+// CPU writes to register F8 or to the ports 103B / 113B, never in the same IO cycle)
 assign mcu_rtc_a = cmos_sel ? cmos_a : { 2'b00, ds_a[5:0] };
 assign mcu_rtc_di = cmos_sel ? cmos_di : ds_di;
 assign mcu_rtc_wr = cmos_sel ? cmos_wr : ds_wr;
@@ -542,12 +561,12 @@ zxuno #(.MASTERCLK(28000000), .FPGA_MODEL(3'b000)) zxuno (
 	.cpu_rd_n			(cpu_rd_n),
 	.cpu_wr_n			(cpu_wr_n),
 	.cpu_m1_n			(cpu_m1_n),
-	.ext_oe			(gs_oe | opl_oe),
-	.ext_dout			(opl_oe ? opl_do : gs_do),
+	.ext_oe			(gs_oe | opl_oe | nx_oe),
+	.ext_dout			(nx_oe ? nx_do : opl_oe ? opl_do : gs_do),
 	.ext_io_block	(opl_sel),
 	.ext_audio_l		(16'd0),        // the ADC goes to zxuno_mix (saturated), not to the 16-bit mixer of ZX-Uno
 	.ext_audio_r		(16'd0),
-	.i2c_scl				(i2c_scl),
+	.i2c_scl				(i2c_scl_m),
 	.i2c_sda_o			(i2c_sda_m),
 	.i2c_sda_i			(i2c_sda),
 	.rtc_sel				(cmos_sel),
