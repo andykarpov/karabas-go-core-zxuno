@@ -10,14 +10,14 @@ ZX Spectrum for the Karabas Go board family (Xilinx Spartan-6 XC6SLX25), based o
 | Karabas Mini | `zxuno.kg` | HDMI | HDMI, analog output (sigma-delta) |
 | Karabas Mini G | `zxuno.kg` | HDMI | HDMI, I2S DAC |
 
-The core file is in `src/`. The 128K ROM, esxDOS 0.8.9 (the DivMMC firmware) and the GS ROM are in it (`core.json` "roms", loaded by the firmware: a new ROM does not need a new bitstream). There is no ZX-Uno BIOS: its settings are in the OSD.
+The core file is in `src/`. The 128K ROM, esxDOS 0.9.0 (the DivMMC firmware) and the GS ROM are in it (`core.json` "roms", loaded by the firmware: a new ROM does not need a new bitstream). There is no ZX-Uno BIOS: its settings are in the OSD.
 
 Status: build 26111819. Mini G: the machine, the peripherals, the MIDI synth, the dot matrix and its meters, the GS, the OPL3 and the start screen were checked on a board. The Go and Mini builds have not been run on a board.
 
 ## Features
 
 - **Machine:** ZX Spectrum 48K / 128K / Pentagon timings, CPU at 3.5 / 7 / 14 / 28 MHz, contention, keyboard issue 2 / 3; ULAplus, Timex hi-colour / hi-res, Radastan; the DMA, the PZX tape player and the register file (FC3B / FD3B) of ZX-Uno.
-- **Storage:** DivMMC with esxDOS 0.8.9 on SD2 (NMI: the esxDOS browser).
+- **Storage:** DivMMC with esxDOS 0.9.0 on SD2 (NMI: the esxDOS browser).
 - **Sound:** two AY (Turbosound), SAA1099, Specdrum / Covox, beeper and tape; the **General Sound** (ports BB / B3, its Z80 and 2 MB of memory in the SDRAM); the **OPL3**: the FM part of the ZXM-MoonSound (ports C4..C7, no wavetable part); the MIDI synth of the board on the AY port A (`PLAY "Y1..."` of the 128K BASIC), on the Mini / Mini G its sound comes back through the ADC into the mix.
 - **Dot matrix** (the add-on on the I2C of the board): the audio meters, and drawing from the Spectrum through the ZX-Uno registers **E0 / E1 / E2** (karabas-go-firmware `docs/matrix.md`).
 - **ESP8266** (Wi-Fi) on the UART registers C6 / C7 of ZX-Uno.
@@ -30,10 +30,20 @@ Not done: the ZX-Uno BIOS, the wavetable part of the OPL4, the raw PS/2 register
 ## Getting started
 
 1. Copy `zxuno.kg` (one file for Go, Mini and Mini G) to the root of the SD card of the firmware.
-2. SD2 (the card of the DivMMC): esxDOS 0.8.9 (its `BIN`, `SYS`, `TMP` folders) and your programs.
+2. SD2 (the card of the DivMMC): the `SYS` and `BIN` folders of [esxDOS 0.9.0](https://www.esxdos.org/) ([esxdos090.zip](https://www.esxdos.org/files/esxdos090.zip)) and your programs. See [esxDOS 0.9.0 on SD2](#esxdos-090-on-sd2) when the card has an older esxDOS.
 3. Choose ZX-Uno in the core menu: the start screen, then esxDOS starts the 48K BASIC. **F11** opens the esxDOS browser.
 
-"Menu" is the Windows key of the keyboard. esxDOS 0.8.9 always starts the 48K ROM: for the 128K menu set DivMMC to Off and press **F12**.
+"Menu" is the Windows key of the keyboard. esxDOS 0.9.0 always starts the 48K ROM: for the 128K menu set DivMMC to Off and press **F12**.
+
+### esxDOS 0.9.0 on SD2
+
+Since build 26112002 the core has the esxDOS 0.9.0 ROM. This ROM checks the version of `SYS/ESXDOS.SYS` and does not start with the system files of 0.8.x, so update SD2 together with the core:
+
+- copy the `SYS` and `BIN` folders of [esxdos090.zip](https://www.esxdos.org/files/esxdos090.zip) to the root of SD2 (the system commands are in `SYS/BIN` now; their old copies in `BIN` are not used any more);
+- long file names: take the new `SYS/CONFIG/ESXDOS.CFG` or add the line `LFN=1` to yours;
+- ZX Next on the same card: replace `machines/next/ESXMMC.BIN` with `ROMS/esxdos-0.9.0-divmmc.bin` of the archive, renamed to `ESXMMC.BIN` (the Next machines with DivMMC need the same version as `SYS`);
+- `NMI.SYS` / `RTC.SYS` made for older esxDOS versions must be rebuilt for the new addresses ($2000 / $2F00);
+- the ROM itself is in `zxuno.kg`: do not flash it with the `FLASHERS` tapes of the archive.
 
 ## OSD menu
 
