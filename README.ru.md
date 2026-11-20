@@ -10,14 +10,14 @@ ZX Spectrum для плат семейства Karabas Go (Xilinx Spartan-6 XC6S
 | Karabas Mini | `zxuno.kg` | HDMI | HDMI, аналоговый выход (сигма-дельта) |
 | Karabas Mini G | `zxuno.kg` | HDMI | HDMI, I2S ЦАП |
 
-Файл ядра лежит в `src/`. В нём ПЗУ 128K, esxDOS 0.8.9 (прошивка DivMMC) и ПЗУ GS (`core.json` «roms», их загружает прошивка платы: для новой ПЗУ не нужна новая прошивка FPGA). BIOS ZX-Uno нет: его настройки — в OSD.
+Файл ядра лежит в `src/`. В нём ПЗУ 128K, esxDOS 0.9.0 (прошивка DivMMC) и ПЗУ GS (`core.json` «roms», их загружает прошивка платы: для новой ПЗУ не нужна новая прошивка FPGA). BIOS ZX-Uno нет: его настройки — в OSD.
 
 Состояние: сборка 26111819. Mini G: машина, периферия, MIDI-синтезатор, матрица и её индикаторы, GS, OPL3 и стартовый экран проверены на плате. Сборки для Go и Mini на плате не запускались.
 
 ## Возможности
 
 - **Машина:** тайминги ZX Spectrum 48K / 128K / Pentagon, процессор 3.5 / 7 / 14 / 28 МГц, конфликты памяти, клавиатура issue 2 / 3; ULAplus, Timex hi-colour / hi-res, Radastan; DMA, PZX-плеер ленты и регистры ZX-Uno (FC3B / FD3B).
-- **Накопитель:** DivMMC с esxDOS 0.8.9 на SD2 (NMI — браузер esxDOS).
+- **Накопитель:** DivMMC с esxDOS 0.9.0 на SD2 (NMI — браузер esxDOS).
 - **Звук:** два AY (Turbosound), SAA1099, Specdrum / Covox, бипер и лента; **General Sound** (порты BB / B3, его Z80 и 2 МБ памяти в SDRAM); **OPL3** — FM-часть ZXM-MoonSound (порты C4..C7, без волновой части); MIDI-синтезатор платы на порту A AY (`PLAY "Y1..."` 128K BASIC), на Mini / Mini G его звук возвращается через АЦП в общую смесь.
 - **Светодиодная матрица** (дополнительная плата на I2C): индикаторы уровня звука и рисование со стороны Спектрума через регистры ZX-Uno **E0 / E1 / E2** (karabas-go-firmware `docs/matrix.ru.md`).
 - **ESP8266** (Wi-Fi) на регистрах UART ZX-Uno C6 / C7.
@@ -30,10 +30,20 @@ ZX Spectrum для плат семейства Karabas Go (Xilinx Spartan-6 XC6S
 ## Как начать
 
 1. Скопируйте `zxuno.kg` (один файл для Go, Mini и Mini G) в корень SD-карты прошивки.
-2. SD2 (карта DivMMC): esxDOS 0.8.9 (её папки `BIN`, `SYS`, `TMP`) и ваши программы.
+2. SD2 (карта DivMMC): папки `SYS` и `BIN` из [esxDOS 0.9.0](https://www.esxdos.org/) ([esxdos090.zip](https://www.esxdos.org/files/esxdos090.zip)) и ваши программы. Если на карте старый esxDOS — см. [esxDOS 0.9.0 на SD2](#esxdos-090-на-sd2).
 3. Выберите ZX-Uno в меню ядер: стартовый экран, затем esxDOS запускает 48K BASIC. **F11** открывает браузер esxDOS.
 
-«Menu» — клавиша Windows. esxDOS 0.8.9 всегда запускает ПЗУ 48K: чтобы попасть в меню 128K, выключите DivMMC и нажмите **F12**.
+«Menu» — клавиша Windows. esxDOS 0.9.0 всегда запускает ПЗУ 48K: чтобы попасть в меню 128K, выключите DivMMC и нажмите **F12**.
+
+### esxDOS 0.9.0 на SD2
+
+Начиная со сборки 26112002 в ядре ПЗУ esxDOS 0.9.0. Эта ПЗУ проверяет версию `SYS/ESXDOS.SYS` и не стартует с системными файлами 0.8.x, поэтому SD2 нужно обновить вместе с ядром:
+
+- скопируйте папки `SYS` и `BIN` из [esxdos090.zip](https://www.esxdos.org/files/esxdos090.zip) в корень SD2 (системные команды теперь лежат в `SYS/BIN`, их старые копии в `BIN` больше не используются);
+- длинные имена файлов: возьмите новый `SYS/CONFIG/ESXDOS.CFG` или добавьте в свой строку `LFN=1`;
+- ZX Next на той же карте: замените `machines/next/ESXMMC.BIN` на `ROMS/esxdos-0.9.0-divmmc.bin` из архива, переименовав его в `ESXMMC.BIN` (машинам Next с DivMMC нужна та же версия, что и в `SYS`);
+- `NMI.SYS` / `RTC.SYS`, сделанные для старых версий esxDOS, нужно пересобрать под новые адреса ($2000 / $2F00);
+- сама ПЗУ лежит в `zxuno.kg`: прошивать её лентами `FLASHERS` из архива не нужно.
 
 ## Меню OSD
 

@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A ZX-Uno ZX Spectrum core for the Karabas Go, Mini and Mini G boards (Xilinx Spartan-6 XC6SLX25, ISE 14.7, XST): a port of the ZX-Uno Spectrum core EXP28 ([zxtres/zxspectrum](https://github.com/zxtres/zxspectrum) `exp28/`, GPL-3, ZXTRES Artix-7 version; the generic RTL without `artix7/` and `zxtres_wrapper/`). Added on top: audio peaks + dot matrix, MIDI, ESP8266 through the ZX-Uno UART registers, General Sound and OPL4 copied from core-tsconf (behind the Ф0 fit gate). Docs, in Russian: `docs/PLAN.md` (research, decisions, phases). Follow the phases; record a changed decision in PLAN.md.
 
-User decisions (2026-11-18): base EXP28; no ZX-Uno BIOS, the 128K ROM and esxDOS 0.8.9 are loadable ROMs (`roms` of `core.json`, in the `.kg`, NOT in the bitstream), written by the firmware into their ZX-Uno SRAM banks, settings in the OSD; the dot matrix moves to ZX-Uno registers E0 / E1 / E2 in ALL cores (zxuno, tsconf, profi, next + firmware docs/matrix*.md), because F0-F3 are the PZX player registers of the ZX-Uno; GS and OPL4 are copies from core-tsconf. Public repo, core id `zxuno`.
+User decisions (2026-11-18): base EXP28; no ZX-Uno BIOS, the 128K ROM and esxDOS 0.9.0 are loadable ROMs (`roms` of `core.json`, in the `.kg`, NOT in the bitstream), written by the firmware into their ZX-Uno SRAM banks, settings in the OSD; the dot matrix moves to ZX-Uno registers E0 / E1 / E2 in ALL cores (zxuno, tsconf, profi, next + firmware docs/matrix*.md), because F0-F3 are the PZX player registers of the ZX-Uno; GS and OPL4 are copies from core-tsconf. Public repo, core id `zxuno`.
 
 ## Rules of the core
 

@@ -16,7 +16,7 @@
             "address": 163840
         },
         {
-            "filename": "roms/esxdos089.bin",
+            "filename": "roms/esxdos090.bin",
             "address": 196608
         },
         {
@@ -27,17 +27,17 @@
     "boards": {
         "go": {
             "link": 2,
-            "build": "26111819",
+            "build": "26112002",
             "bitstream": "karabas_go.bin"
         },
         "mini": {
             "link": 2,
-            "build": "26111819",
+            "build": "26112002",
             "bitstream": "karabas_mini.bin"
         },
         "minig": {
             "link": 2,
-            "build": "26111819",
+            "build": "26112002",
             "bitstream": "karabas_minig.bin"
         }
     },
