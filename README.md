@@ -21,7 +21,7 @@ Status: build 26111819. Mini G: the machine, the peripherals, the MIDI synth, th
 - **Sound:** two AY (Turbosound), SAA1099, Specdrum / Covox, beeper and tape; the **General Sound** (ports BB / B3, its Z80 and 2 MB of memory in the SDRAM); the **OPL3**: the FM part of the ZXM-MoonSound (ports C4..C7, no wavetable part); the MIDI synth of the board on the AY port A (`PLAY "Y1..."` of the 128K BASIC), on the Mini / Mini G its sound comes back through the ADC into the mix.
 - **Dot matrix** (the add-on on the I2C of the board): the audio meters, and drawing from the Spectrum through the ZX-Uno registers **E0 / E1 / E2** (karabas-go-firmware `docs/matrix.md`).
 - **ESP8266** (Wi-Fi) on the UART registers C6 / C7 of ZX-Uno.
-- **Clock:** the RTC of the board as the Gluk CMOS (ports EFF7 / DFF7 / BFF7) and as a DS1307 on the I2C of ZX-Uno (register F8).
+- **Clock:** the RTC of the board as the Gluk CMOS (ports EFF7 / DFF7 / BFF7) and as a DS1307 on the I2C of ZX-Uno (register F8) and of ZX Next (ports 103B / 113B).
 - **Controllers:** the USB keyboard, two joysticks (Kempston, Sinclair 1 / 2, cursor, Fuller), the Kempston mouse (ports FBDF / FFDF / FADF).
 - **Video:** the picture of the ULA line-doubled to 720 x 576 at 50 Hz; colour or a green / amber / grey monitor.
 
@@ -42,7 +42,7 @@ Since build 26112002 the core has the esxDOS 0.9.0 ROM. This ROM checks the vers
 - copy the `SYS` and `BIN` folders of [esxdos090.zip](https://www.esxdos.org/files/esxdos090.zip) to the root of SD2 (the system commands are in `SYS/BIN` now; their old copies in `BIN` are not used any more);
 - long file names: take the new `SYS/CONFIG/ESXDOS.CFG` or add the line `LFN=1` to yours;
 - ZX Next on the same card: replace `machines/next/ESXMMC.BIN` with `ROMS/esxdos-0.9.0-divmmc.bin` of the archive, renamed to `ESXMMC.BIN` (the Next machines with DivMMC need the same version as `SYS`);
-- `NMI.SYS` / `RTC.SYS` made for older esxDOS versions must be rebuilt for the new addresses ($2000 / $2F00);
+- `NMI.SYS` / `RTC.SYS` made for older esxDOS versions must be rebuilt for the new addresses ($2000 / $2F00). An `RTC.SYS` for 0.9.0 (the RTC.SYS of the Next, ports 103B / 113B, at $2F00) is in [karabas-go software/esxdos](https://github.com/andykarpov/karabas-go/tree/master/software/esxdos): copy it to `SYS` of SD2;
 - the ROM itself is in `zxuno.kg`: do not flash it with the `FLASHERS` tapes of the archive.
 
 ## OSD menu
@@ -71,7 +71,7 @@ Since build 26112002 the core has the esxDOS 0.9.0 ROM. This ROM checks the vers
 | ZX-Uno registers | FC3B (register) / FD3B (data) |
 | Dot matrix | registers E0 (control), E1 (x / y), E2 (colour) |
 | ESP8266 | registers C6 (data), C7 (status) |
-| RTC | Gluk: EFF7 (bit 7 = on), DFF7 (address), BFF7 (data); DS1307: I2C on register F8 |
+| RTC | Gluk: EFF7 (bit 7 = on), DFF7 (address), BFF7 (data); DS1307: I2C on register F8 and on the ports of ZX Next 103B (SCL) / 113B (SDA) |
 | General Sound | BB (command / status), B3 (data) |
 | OPL3 (FM of MoonSound) | C4 / C5 bank 0, C6 / C7 bank 1 (address / data) |
 | Kempston mouse | FBDF (x), FFDF (y), FADF (buttons) |
