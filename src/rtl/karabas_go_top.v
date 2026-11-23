@@ -232,7 +232,7 @@ wire [31:0] ld_addr;
 wire [7:0] ld_data;
 wire ld_ready;
 
-localparam SW_N = 22;   // 20 GS, 21 OPL3
+localparam SW_N = 23;   // 20 GS, 21 OPL3, 22 VGA Sync
 wire [SW_N*8-1:0] softsw;
 wire sw_wr;
 // RTC of the board (core.json rtc_mode 1: the DS1307 layout, BCD), shared by the DS1307 on I2C and the Gluk ports
@@ -403,6 +403,7 @@ wire sw_mouse_off = softsw[18*8];
 wire sw_divmmc_off = softsw[19*8];          // DivMMC On / Off (esxDOS starts 48K BASIC; Off: the 128K menu after a reset)
 wire sw_gs_off = softsw[20*8];               // General Sound On / Off
 wire sw_opl_off = softsw[21*8];              // OPL3 (FM of MoonSound) On / Off
+wire [1:0] sw_vga_sync = softsw[22*8 +: 2];  // VGA Sync: bit 0 +H, bit 1 +V (0 = -H -V, as 576p and core-tsconf)
 // option number -> JOYCONF code of ZX-Uno (0 off, 1 Kempston, 2 Sinclair P1, 3 Sinclair P2, 4 cursor, 5 Fuller)
 function [2:0] joy_code(input [2:0] opt);
 	joy_code = (opt >= 3'd5) ? 3'd0 : opt + 3'd1;
@@ -726,13 +727,18 @@ kg_l2_osd_overlay overlay(
 	.de_o				(osd_de)
 );
 
-// the FT812 and the FPGA share the video DAC: the FT812 drives it when the firmware (FT_VGA_ON) asks for it
+// the FT812 and the FPGA share the video DAC: the FT812 drives it when the firmware (FT_VGA_ON) asks for it.
+// VGA (26112302, Caasper911: Pentagon shifted, the auto adjust of the monitor wrong for the other cores after it):
+// black outside DE, so the analog picture is the 720 x 576 window at the same place after HSYNC in all timings
+// (tb_video: lit points 8..710 in 48K, 8..720 in 128K, 0..720 in Pentagon, all 576 lines; before, the ULA border
+// outside the window was lit too: ~703 x 608 in 48K, 768 x 576 in Pentagon, 48 points more), and the syncs -H -V by
+// default (OSD VGA Sync), as 576p and core-tsconf.
 assign FT_OE_N = ~mcu_ft_vga_on;
-assign VGA_R = mcu_ft_vga_on ? 8'bZZZZZZZZ : osd_r;
-assign VGA_G = mcu_ft_vga_on ? 8'bZZZZZZZZ : osd_g;
-assign VGA_B = mcu_ft_vga_on ? 8'bZZZZZZZZ : osd_b;
-assign VGA_HS = mcu_ft_vga_on ? 1'bZ : osd_hs;
-assign VGA_VS = mcu_ft_vga_on ? 1'bZ : osd_vs;
+assign VGA_R = mcu_ft_vga_on ? 8'bZZZZZZZZ : (osd_de ? osd_r : 8'd0);
+assign VGA_G = mcu_ft_vga_on ? 8'bZZZZZZZZ : (osd_de ? osd_g : 8'd0);
+assign VGA_B = mcu_ft_vga_on ? 8'bZZZZZZZZ : (osd_de ? osd_b : 8'd0);
+assign VGA_HS = mcu_ft_vga_on ? 1'bZ : osd_hs ^ ~sw_vga_sync[0];
+assign VGA_VS = mcu_ft_vga_on ? 1'bZ : osd_vs ^ ~sw_vga_sync[1];
 assign V_CLK = mcu_ft_vga_on ? FT_CLK : v_clk;
 
 // ---------- i2s DAC ----------

@@ -59,6 +59,7 @@ ZX Spectrum для плат семейства Karabas Go (Xilinx Spartan-6 XC6S
 | | Hard reset | загрузка ZX-Uno заново (стартовый экран) | Menu+F12 |
 | Video | ULAplus, Timex, Radastan | On / Off | |
 | Video | Palette | Colour / Green / Amber / Grey | |
+| Video | VGA Sync (Karabas Go) | -H -V / +H -V / -H +V / +H +V | |
 | Sound | AY, Turbosound, SAA1099, Specdrum, GS, OPL3 | On / Off | |
 | Sound | Stereo | ABC / ACB / Mono | |
 | Input | Joystick L, Joystick R | Kempston / Sinclair1 / Sinclair2 / Cursor / Fuller / Off | |

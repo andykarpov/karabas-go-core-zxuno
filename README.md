@@ -59,6 +59,7 @@ Since build 26112002 the core has the esxDOS 0.9.0 ROM. This ROM checks the vers
 | | Hard reset | the boot of ZX-Uno again (start screen) | Menu+F12 |
 | Video | ULAplus, Timex, Radastan | On / Off | |
 | Video | Palette | Colour / Green / Amber / Grey | |
+| Video | VGA Sync (Karabas Go) | -H -V / +H -V / -H +V / +H +V | |
 | Sound | AY, Turbosound, SAA1099, Specdrum, GS, OPL3 | On / Off | |
 | Sound | Stereo | ABC / ACB / Mono | |
 | Input | Joystick L, Joystick R | Kempston / Sinclair1 / Sinclair2 / Cursor / Fuller / Off | |

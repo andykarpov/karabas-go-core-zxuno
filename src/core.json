@@ -27,7 +27,7 @@
     "boards": {
         "go": {
             "link": 2,
-            "build": "26112301",
+            "build": "26112302",
             "bitstream": "karabas_go.bin"
         },
         "mini": {
@@ -187,6 +187,23 @@
             ],
             "default": 0,
             "page": 1
+        },
+        {
+            "type": "S",
+            "name": "VGA Sync",
+            "key": "vga_sync",
+            "index": 22,
+            "options": [
+                {"name": "-H -V", "key": "hn_vn"},
+                {"name": "+H -V", "key": "hp_vn"},
+                {"name": "-H +V", "key": "hn_vp"},
+                {"name": "+H +V", "key": "hp_vp"}
+            ],
+            "default": 0,
+            "page": 1,
+            "boards": [
+                "go"
+            ]
         },
         {
             "type": "S",
