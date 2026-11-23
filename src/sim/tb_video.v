@@ -11,15 +11,20 @@ module tb_video;
 	pal_sync_generator ps(.clk(clk), .clken(clk7en), .mode(mode), .rasterint_enable(1'b0), .vretraceint_disable(1'b0),
 		.raster_line(9'd0), .raster_int_in_progress(rip), .csync_option(1'b0),
 		.hinit48k(9'd0), .vinit48k(9'd0), .hinit128k(9'd0), .vinit128k(9'd0), .hinitpen(9'd0), .vinitpen(9'd0),
-		.ri(3'd7), .gi(3'd7), .bi(3'd7), .hcnt(hc), .vcnt(vc), .ro(ro), .go(go), .bo(bo), .hsync(hs), .vsync(vs),
+		.ri(3'd7), .gi(paper ? 3'd7 : 3'd0), .bi(paper ? 3'd7 : 3'd0), .hcnt(hc), .vcnt(vc), .ro(ro), .go(go), .bo(bo), .hsync(hs), .vsync(vs),
 		.csync(cs), .int_n(intn), .end_count_v(endv), .blank(blank));
 	wire [7:0] r8, g8, b8; wire ohs, ovs, ode;
 	zxuno_scandbl #(.CLKVIDEO(28030)) sd(.clk(clk), .clk14en(clk14en), .ri(ro), .gi(go), .bi(bo), .blank_i(blank),
 		.hsync_ext_n(hs), .vsync_ext_n(vs), .ro(r8), .go(g8), .bo(b8), .hsync(ohs_p), .vsync(ovs_p), .de(ode));
 	wire ohs_p, ovs_p; assign ohs = ~ohs_p; assign ovs = ~ovs_p;   // the checks below count active-low syncs
 	integer t = 0, hs_t0 = 0, hs_lo = 0, line_clk = 0, de_cnt = 0, de_lines = 0, lines = 0, vs_lines = 0;
-	integer in_hs_t = 0, in_hs_n = 0, ce14 = 0, hpos = 0, de_first = 0, cut = 0, de_l = 0, de_f = -1, vs_l = 0;
+	integer bin = 0, in_hs_t = 0, in_hs_n = 0, ce14 = 0, hpos = 0, de_first = 0, cut = 0, de_l = 0, de_f = -1, vs_l = 0;
 	reg ode_d = 0;
+	// the paper is white, the border red: where the paper is in the DE window (line from the first DE line, point)
+	integer pap_l = -1, pap_x = 0, de_x = 0, pap_le = 0, pap_xe = 0;
+	wire paper = (hc < 9'd256 && vc < 9'd192);
+	always @(posedge clk) if (ode) de_x = de_x + 1; else de_x = 0;
+
 	reg ohs_d = 1, ovs_d = 1, hs_d = 1;
 	always @(posedge clk) begin
 		t = t + 1;
@@ -31,6 +36,8 @@ module tb_video;
 		ode_d <= ode;
 		if (ode) de_cnt = de_cnt + 1;
 		if (!sd.dout[9] && !ode && sd.v_win === 1'b1) cut = cut + 1;
+		if (ode && sd.dout[9]) bin = bin + 1;
+		if (ode && g8 != 0) begin if (pap_l < 0) begin pap_l = lines; pap_x = de_x; end pap_le = lines; pap_xe = de_x; end
 		if (!ohs) hs_lo = hs_lo + 1;
 		if (ohs_d && !ohs) begin
 			lines = lines + 1;
@@ -43,13 +50,13 @@ module tb_video;
 		end
 		ohs_d <= ohs;
 		if (ovs_d && !ovs) begin
-			$display("mode %0d frame: %0d lines (%0d with DE, lines %0d..%0d, vsync %0d lines), %0d clk14en, visible points outside DE (in v window) %0d", mode, lines, de_lines, de_f, de_l, vs_lines, ce14, cut);
-			de_f = -1; cut = 0;
+			$display("mode %0d frame: %0d lines (%0d with DE, lines %0d..%0d, vsync %0d lines), %0d clk14en, visible points outside DE (in v window) %0d, blank points inside DE %0d, paper DE lines %0d..%0d of %0d, points %0d..%0d of 720", mode, lines, de_lines, de_f, de_l, vs_lines, ce14, cut, bin, pap_l - de_f + 1, pap_le - de_f + 1, de_lines, pap_x, pap_xe);
+			de_f = -1; cut = 0; bin = 0; pap_l = -1;
 			lines = 0; de_lines = 0; vs_lines = 0; ce14 = 0;
 		end
 		ovs_d <= ovs;
 	end
 	initial begin
-		#(45_000_000); mode = 2'b01; #(45_000_000); mode = 2'b10; #(45_000_000); $finish;
+		#(45_000_000); mode = 2'b01; #(45_000_000); mode = 2'b10; #(90_000_000); $finish;
 	end
 endmodule
