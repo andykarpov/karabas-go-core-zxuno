@@ -14,6 +14,16 @@
 //    per output line), for the top to restart HDMI: the capture of the bench locked on the 896 of the boot
 //    stub (48K timing) and showed the picture slanted after MASTERCONF set the 128K timing (26111804);
 //  - no 15 kHz mode, no scanlines; the outputs are registered and 8 bits per colour.
+//  - Pentagon (26112301, Caasper911: black band with a step at the top, the paper shifted right, the picture
+//    blinking): its ULA has VSYNC 16 lines and VBLANK 32 lines (vs 4 / 8), hsync at the start of hblank, so the
+//    window of 48K gave no back porch after VSYNC (32 lines of VSYNC, DE right after), 16 ULA lines of vblank
+//    inside the window and the paper 24 points right of the centre. Now VSYNC is 8 lines counted from the
+//    VSYNC edge of the ULA in all modes, and with a frame of 640 lines (Pentagon) the window is at 64..639
+//    (vertical), 174..893 (horizontal), paper centred (48 ULA lines top / bottom; the ULA gives its points ~24
+//    later than hc, so the window is 22 points right of the hc centre 152: centred on the bench, OSD as the ruler),
+//    and the syncs move with it: HSYNC at 40..103, VSYNC at lines 32..39, the porches of 48K (sync to DE 134
+//    points / 32 lines, front porches 40 points / 32 lines), for sinks that place the picture from the syncs.
+//    A change of the frame length also restarts HDMI;
 // The timing on the output is the doubled timing of the ULA: 48K 448 x 312, 128K 456 x 311, Pentagon
 // 448 x 320 (7 MHz pixels) -> 896 / 912 clocks of 28 MHz per line, 624 / 622 / 640 lines, ~50 Hz.
 module zxuno_scandbl #(
@@ -38,8 +48,18 @@ module zxuno_scandbl #(
 	localparam [9:0] HSYNC_COUNT = 10'd64;     // as 576p and the BaseConf core (the original: 3.36 us)
 	localparam [9:0] H_DE_BEG = 10'd136;       // the visible ULA points start at 144 (48K)
 	localparam [9:0] H_DE_END = H_DE_BEG + 10'd720;
-	localparam [9:0] V_DE_BEG = 10'd32;        // output lines from the start of VSYNC
+	localparam [9:0] V_DE_BEG = 10'd32;        // output lines from the start of VSYNC of the ULA
 	localparam [9:0] V_DE_END = V_DE_BEG + 10'd576;
+	localparam [9:0] V_VS_BEG = 10'd0;         // output VSYNC, 8 lines
+	// Pentagon: hsync of the ULA at hc 320 (not 344), the paper at point 256 of the line; vsync at vc 240,
+	// vblank to vc 271, 640 lines
+	localparam [9:0] H_DE_BEG_P = 10'd174;
+	localparam [9:0] H_DE_END_P = H_DE_BEG_P + 10'd720;
+	localparam [9:0] V_DE_BEG_P = 10'd64;
+	localparam [9:0] V_DE_END_P = V_DE_BEG_P + 10'd576;
+	localparam [9:0] V_VS_BEG_P = 10'd32;
+	localparam [9:0] H_HS_BEG_P = 10'd40;
+	reg pent = 1'b0, frame_change = 1'b0;                        // the last frame had more than 630 output lines
 
 	reg [10:0] addrvideo = 11'd0, addrvga = 11'd0;
 	reg [9:0] totalhor = 10'd0;
@@ -55,7 +75,7 @@ module zxuno_scandbl #(
 	// write side: a new half of the buffer at each falling edge of the ULA hsync
 	reg hsync_ext_n_prev = 1'b1;
 	always @(posedge clk) begin
-		mode_change <= 1'b0;
+		mode_change <= frame_change;
 		if (clk14en) begin
 			hsync_ext_n_prev <= hsync_ext_n;
 			if (hsync_ext_n == 1'b0 && hsync_ext_n_prev == 1'b1) begin
@@ -88,18 +108,29 @@ module zxuno_scandbl #(
 	end
 
 	// syncs one clock late, as the buffer data; VSYNC taken from the ULA at the start of each output line
-	reg hs_d = 1'b1, vs_line = 1'b1, h_win = 1'b0, v_win = 1'b0;
+	reg hs_d = 1'b1, vs_ula = 1'b1, vs_line = 1'b1, vs_q = 1'b1, h_win = 1'b0, v_win = 1'b0;
 	reg [9:0] vline = 10'd0;
+	wire [9:0] vline_n = (vs_ula && !vsync_ext_n) ? 10'd0 : (vline != 10'h3FF) ? vline + 10'd1 : vline;
+	wire [9:0] vs_beg = pent ? V_VS_BEG_P : V_VS_BEG;
+	wire frame_pent = (vline >= 10'd630 && vline != 10'h3FF);   // 3FF: no ULA line length yet (power-up)
 	always @(posedge clk) begin
-		hs_d <= (addrvga[9:0] < HSYNC_COUNT) ? 1'b0 : 1'b1;
-		h_win <= (addrvga[9:0] >= H_DE_BEG && addrvga[9:0] < H_DE_END);
+		hs_d <= pent ? ~(addrvga[9:0] >= H_HS_BEG_P && addrvga[9:0] < H_HS_BEG_P + HSYNC_COUNT)
+		             : ~(addrvga[9:0] < HSYNC_COUNT);
+		h_win <= pent ? (addrvga[9:0] >= H_DE_BEG_P && addrvga[9:0] < H_DE_END_P)
+		              : (addrvga[9:0] >= H_DE_BEG && addrvga[9:0] < H_DE_END);
+		if (addrvga[9:0] == H_HS_BEG_P)   // Pentagon: VSYNC changes with the leading edge of HSYNC
+			vs_q <= vs_line;
+		frame_change <= 1'b0;
 		if (line_start) begin
-			vs_line <= vsync_ext_n;
-			if (vs_line && !vsync_ext_n)
-				vline <= 10'd0;
-			else if (vline != 10'h3FF)
-				vline <= vline + 10'd1;
-			v_win <= (vline + 10'd1 >= V_DE_BEG && vline + 10'd1 < V_DE_END);
+			vs_ula <= vsync_ext_n;
+			if (vs_ula && !vsync_ext_n) begin   // vline: the last line of the frame
+				pent <= frame_pent;
+				frame_change <= (pent != frame_pent);
+			end
+			vline <= vline_n;
+			vs_line <= ~(vline_n >= vs_beg && vline_n < vs_beg + 10'd8);
+			v_win <= pent ? (vline_n >= V_DE_BEG_P && vline_n < V_DE_END_P)
+			              : (vline_n >= V_DE_BEG && vline_n < V_DE_END);
 		end
 	end
 
@@ -109,6 +140,6 @@ module zxuno_scandbl #(
 		bo <= dout[9] ? 8'd0 : { dout[2:0], dout[2:0], dout[2:1] };
 		de <= h_win & v_win;
 		hsync <= ~hs_d;
-		vsync <= ~vs_line;
+		vsync <= ~(pent ? vs_q : vs_line);
 	end
 endmodule

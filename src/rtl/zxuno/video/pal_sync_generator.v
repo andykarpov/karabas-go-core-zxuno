@@ -154,7 +154,7 @@ module pal_sync_generator (
 								  begin_hsync <= 9'd320;
 								  end_hsync <= 9'd351;
 								  begin_vblank <= 9'd240;
-								  end_vblank <= 9'd271;
+								  end_vblank <= 9'd269;  // karabas: 271 -> 269, the first lines of the DE window of the line doubler show vc 270 / 271 from hc 320 (black step at the top, 26112301)
 								  begin_vsync <= 9'd240;
 								  end_vsync <= 9'd255;
 								  vcint <= 9'd239;
