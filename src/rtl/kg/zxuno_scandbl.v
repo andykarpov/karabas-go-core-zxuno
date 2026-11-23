@@ -108,6 +108,7 @@ module zxuno_scandbl #(
 	reg [9:0] vline = 10'd0;
 	wire [9:0] vline_n = (vs_ula && !vsync_ext_n) ? 10'd0 : (vline != 10'h3FF) ? vline + 10'd1 : vline;
 	wire [9:0] vs_beg = pent ? V_VS_BEG_P : V_VS_BEG;
+	wire frame_pent = (vline >= 10'd630 && vline != 10'h3FF);   // 3FF: no ULA line length yet (power-up)
 	always @(posedge clk) begin
 		hs_d <= (addrvga[9:0] < HSYNC_COUNT) ? 1'b0 : 1'b1;
 		h_win <= pent ? (addrvga[9:0] >= H_DE_BEG_P && addrvga[9:0] < H_DE_END_P)
@@ -116,8 +117,8 @@ module zxuno_scandbl #(
 		if (line_start) begin
 			vs_ula <= vsync_ext_n;
 			if (vs_ula && !vsync_ext_n) begin   // vline: the last line of the frame
-				pent <= (vline >= 10'd630);
-				frame_change <= (pent != (vline >= 10'd630));
+				pent <= frame_pent;
+				frame_change <= (pent != frame_pent);
 			end
 			vline <= vline_n;
 			vs_line <= ~(vline_n >= vs_beg && vline_n < vs_beg + 10'd8);

@@ -15,7 +15,9 @@ module tb_video;
 		.csync(cs), .int_n(intn), .end_count_v(endv), .blank(blank));
 	wire [7:0] r8, g8, b8; wire ohs, ovs, ode;
 	zxuno_scandbl #(.CLKVIDEO(28030)) sd(.clk(clk), .clk14en(clk14en), .ri(ro), .gi(go), .bi(bo), .blank_i(blank),
-		.hsync_ext_n(hs), .vsync_ext_n(vs), .ro(r8), .go(g8), .bo(b8), .hsync(ohs_p), .vsync(ovs_p), .de(ode));
+		.hsync_ext_n(hs), .vsync_ext_n(vs), .ro(r8), .go(g8), .bo(b8), .hsync(ohs_p), .vsync(ovs_p), .de(ode), .mode_change(mchg));
+	wire mchg;
+	always @(posedge clk) if (mchg) $display("mode_change at %0t ns, mode %0d", $time/1000, mode);
 	wire ohs_p, ovs_p; assign ohs = ~ohs_p; assign ovs = ~ovs_p;   // the checks below count active-low syncs
 	integer t = 0, hs_t0 = 0, hs_lo = 0, line_clk = 0, de_cnt = 0, de_lines = 0, lines = 0, vs_lines = 0;
 	integer bin = 0, in_hs_t = 0, in_hs_n = 0, ce14 = 0, hpos = 0, de_first = 0, cut = 0, de_l = 0, de_f = -1, vs_l = 0;
